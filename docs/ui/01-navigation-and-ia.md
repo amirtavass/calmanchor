@@ -1,137 +1,210 @@
 # CalmAnchor — UI/UX: Navigation Shell & Information Architecture
 
-> **Status:** Draft · **Milestone:** M1 (Navigation shell)
+> **Status:** Draft v2 · **Milestone:** M1/M2 (shell + journey mapping)
 > **Design source of truth:** `design-system/calm-anchor-design-system.css`
 > **Rendering baseline:** Expo Router (`app/` = file-based routes)
-> **Convention:** every diagram block maps to a route file and a design-system component/token. See annotations at the bottom.
-
-This document is the FIRST of a `docs/ui/` series. It defines the single root shell that every
-other flow (exercise session, check-in, crisis, portfolio, export) hangs off. All other flow
-diagrams assume the shell below.
-
----
-
-## 1. High-Level Information Architecture
-
-The app is a 5-tab single-user companion. One persistent element (the **Crisis FAB**) floats above
-every tab at all times. There are no login screens, no clinician views, no multi-user — confirm
-with `AGENTS.md`.
-
-```
-                      ┌─────────────────────────────────────────────┐
-                      │                CALMANCHOR ROOT              │
-                      │         (app/_layout.tsx — root Stack)      │
-                      └────────────────────────────┬────────────────┘
-                                                   │
-                     ┌─────────────────────────────┴─────────────────────────────┐
-                     │  Stack screens (not tabs) — pushed over the tab shell      │
-                     │  [crisis/*] [exercise/*] [diary/*] [onboarding/*] [settings]│
-                     └─────────────────────────────┬─────────────────────────────┘
-                                                   │
-               ┌───────────────────────────────────┴───────────────────────────────────┐
-               │                        TAB SHELL  (app/(tabs)/_layout.tsx)           │
-               │                      5 bottom tabs + Crisis FAB (always shown)        │
-               └───────────────────────────────────┬───────────────────────────────────┘
-                                                   │
-   ┌───────────────┬───────────────┬───────────────┼───────────────┬───────────────┐
-   ▼               ▼               ▼               ▼               ▼               ▼
- [ DASHBOARD ]  [ TOOLKIT ]     [ EXERCISES ]    [ DIARY ]       [ PORTFOLIO ]   [ CRISIS FAB ]─┐
-   home / index   PDF viewer      self-sooth        reflections     personal        covers all   │
-   check-in       chapters        menu              journaling      toolkit        tabs, always │
-   "read me"      (M2)            by category       prompts         (favourites)    one tap     │
-   triggers       (M3)            (M2)              (M2)            (M3)            away        │
-```
-
-**Key decisions:**
-- **Dashboard = home**. The daily check-in card lives here (M3). It greets the user with no
-  pressure — no streak, no "X days missed".
-- **Crisis FAB is above the tab bar** (higher z-index than the tabs), never hidden, no login, no
-  confirmation dialog. Bypasses all navigation when tapped.
-- **Toolkit/Diary/Exercises/Portfolio** are the four "work" tabs per `docs/progress/01-overview.md`. Dashboard is
-  the reflection/home tab.
+> **Route map:** see `02-routing-map.md` (this doc covers *why* each screen exists; that doc covers *what route/file*).
+> **Convention:** every screen is designed so a user can **do or answer 3–5 important things**. That is the
+> design contract each screen must satisfy. Screens below list those actions; the ASCII screen proposals
+> are built from them.
 
 ---
 
-## 2. Route Tree (Expo Router)
+## 1. Design principle: 3–5 things per screen
+
+Every screen exists to let a user complete a small set of **journey actions**. When designing any screen,
+ask: *"What can the user do or answer here?"* If it's more than ~5, the screen is overloaded for a
+dysregulated user. If it's fewer than 3, it's probably part of another screen.
+
+The journey verticals (from the user-journey analysis) are:
+**First-Touch · Learn/Read · Find/Choose · Do (Guided Exercise) · Reflect (Journal) · Check-in · Review · Privacy**
+
+Each tab/screen below names its 3–5 actions and the vertical(s) they serve.
+
+---
+
+## 2. High-Level Information Architecture
+
+Single-user companion. A persistent **Crisis FAB** floats above every tab. No login screens in the main
+shell (auth is silent), no clinician views, no multi-user.
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                 CALMANCHOR ROOT (app/_layout.tsx)            │
+│              Root Stack + ThemeProvider + StatusBar           │
+└──────────────────────────────┬───────────────────────────────┘
+                               │
+        ┌──────────────────────┴──────────────────────┐
+        │  Stack/modal screens (pushed OVER the tabs)  │
+        │  [crisis/*] [exercise/*] [diary/*] [profile/*]│
+        │  [onboarding/* (M3)]                         │
+        └──────────────────────┬──────────────────────┘
+                               │
+        ┌──────────────────────┴──────────────────────┐
+        │         TAB SHELL (app/(tabs)/_layout.tsx)  │
+        │       bottom tabs + Crisis FAB (always)     │
+        └──────────────────────┬──────────────────────┘
+                               │
+   ┌──────────┬──────────┬─────┴──────┬──────────┬──────────┐
+   ▼          ▼          ▼            ▼          ▼          ▼
+[ HOME ]   [ TOOLKIT ] [ EXERCISES ] [ DIARY ] [PORTFOLIO][CRISIS FAB]
+ check-in    read PDF    do self-      reflect   my stuff   always one
+ (M3)       + chapters   soothing      + journal  (M3)      tap away
+ [M3 home]  [M2]         (M2)          (M2)      [M3]      [M1]
+```
+
+> **Dashboard** is the *review* vertical and is **M3** (needs data to mean anything). For M1/M2 it is the
+> home tab placeholder. **Portfolio** is M3. Both are routable placeholders now.
+
+---
+
+## 3. Screen → journeys → 3–5 actions (the design contract)
+
+### HOME / CHECK-IN — `(tabs)/index.tsx` — *Check-in · Review · Do*
+Verticals: **Check-in, Do (quick relief), Reflect (nudge)**
+
+A user landing here can:
+1. **Answer a quick check-in** — pick nervous-system state + survival response + add triggers + optional note → `saveCheckin()`
+2. **Get quick relief now** — jump straight to crisis/breathe/ground tiles
+3. **See today's reflection prompt** → one tap into Diary
+4. **Pick up a favourite exercise** (quick start, from Portfolio when available)
+5. *(M3)* **See a gentle pattern hint** — no pressure, no streak, no mood trend (S26)
+
+### TOOLKIT — `(tabs)/toolkit.tsx` — *Learn/Read*
+Verticals: **Learn/Read**
+
+A user here can:
+1. **Browse the 20 chapters in order** (title + page range) → `getChapters()`
+2. **Open the workbook PDF** and jump to a chapter → `lib/toolkit.ts` (`TOOLKIT_URL`)
+3. **Continue from last-read position** (remember where they stopped)
+4. **Search/filter** a chapter title (M2 stretch) 
+5. **Find an exercise** referenced in a chapter → deep-link to Exercises
+
+### EXERCISES — `(tabs)/exercises.tsx` — *Find/Choose · Do*
+Verticals: **Find/Choose, Do, Review (rate)**
+
+A user here can:
+1. **Browse by 6 categories** (`breathing, somatic, sensory, voice, mindful, crisis`) → `getAllExercises()` / `getExercisesByCategory()`
+2. **Open an exercise** → read steps + duration before starting → `exercise/[id]`
+3. **Start a guided session** → `exercise/session/[id]` (timer, distress pre/post, helpfulness)
+4. **Favourite / save to Portfolio**
+5. **Find the right one for *right now*** — "what might help in this state" quick filter (feeds from check-in state when available)
+
+### DIARY — `(tabs)/diary.tsx` — *Reflect*
+Verticals: **Reflect**
+
+A user here can:
+1. **See the 3 seeded workbook prompts** → pick one
+2. **Write a new entry** (free text, with/without a prompt) → `saveJournalEntry()`
+3. **Review past entries** (timeline, newest first) → `getJournalEntries()`
+4. **Edit within the limited window** (S21) / **delete a single entry** (S22)
+5. **Tag an entry** (system or private tag) → `getSystemTags()` / `createUserTag()`
+
+### PORTFOLIO — `(tabs)/portfolio.tsx` — *Review · Privacy (ownership)* — **M3 placeholder**
+Verticals: **Review, Do (quick access)**
+
+A user here can (M3):
+1. **See favourited exercises** (their personal toolkit)
+2. **Read safe-space notes** and custom strategies
+3. **Add a custom entry** ("call my sister", "make tea")
+4. **Reorder by priority** (feeds "My Quick Reset" in Crisis)
+
+### DASHBOARD — `(tabs)/dashboard.tsx` — *Review* — **M3 placeholder**
+Verticals: **Review**
+
+A user here can (M3):
+1. **See trigger frequency** over time
+2. **See survival-response distribution**
+3. **See exercise effectiveness** (helpfulness ratings)
+4. **See time-of-day patterns**
+5. **…and NOTHING more** — no mood trend, no guilt, no "good/bad" framing (S26). Descriptive only.
+
+### CRISIS — `crisis/*` — *Do (emergency)* — **always one tap**
+Verticals: **Do**
+
+A user here can:
+1. **Ground** — 5-4-3-2-1 sensory grounding
+2. **Breathe** — box breathing (4-4-4-4)
+3. **Quick Reset** — top-rated from Portfolio (default fallback set if empty)
+4. **See UK crisis contacts** (Samaritans 116 123, Shout 85258, NHS 111) — visible, not intrusive
+
+**Rules:** no confirmation dialogs, no login gate, fully offline, usage never logged/analysed.
+
+### PROFILE / SETTINGS — `profile/*` (header avatar) — *Privacy · First-Touch*
+Verticals: **Privacy, First-Touch**
+
+A user here can:
+1. **Edit research profile** (age band, gender, ethnicity, treatment, referral — all optional, prefer-not-to-say) → `saveProfile()`
+2. **Change settings** (theme, font size)
+3. **Export data** (CSV) — S27 (M3/M4)
+4. **Delete all my data** (full withdrawal) — S05 (M3/M4)
+5. **About** — crisis contacts, toolkit info
+
+---
+
+## 4. Route Tree (Expo Router) — concise
 
 ```
 app/
 ├─ _layout.tsx                 Root: ThemeProvider + Stack + StatusBar
-│                              ├─ (tabs)          → tab shell (default/initial)
-│                              ├─ crisis          → stack modal, full-screen
-│                              ├─ exercise        → stack
-│                              ├─ diary           → stack
-│                              └─ onboarding      → stack (M3, from Settings)
-│
 ├─ (tabs)/
-│  ├─ _layout.tsx              Tabs navigator + <CrisisFab/> overlay
-│  ├─ index.tsx                Dashboard (ROOT tab — the app's home)
-│  ├─ toolkit.tsx              Toolkit (PDF + chapter nav)          M2
-│  ├─ exercises.tsx            Exercise Menu (category list)        M2
-│  ├─ diary.tsx                Diary (prompts list)                 M2
-│  └─ portfolio.tsx            Portfolio (personal toolkit)         M3
-│
+│  ├─ _layout.tsx              Tabs + <CrisisFab/> overlay
+│  ├─ index.tsx                Home / check-in            [M3 home; M2 placeholder]
+│  ├─ toolkit.tsx              Toolkit (PDF + chapters)   [M2]
+│  ├─ exercises.tsx            Exercise catalogue         [M2]
+│  ├─ diary.tsx                Journal                    [M2]
+│  ├─ portfolio.tsx            Portfolio                  [M3 placeholder]
+│  └─ dashboard.tsx            Pattern Dashboard          [M3 placeholder]
 ├─ crisis/
-│  ├─ _layout.tsx              Minimal full-screen (no tab bar, no header)
-│  ├─ index.tsx                Landing: Ground / Breathe / Quick Reset
-│  ├─ ground.tsx               5-4-3-2-1 sensory grounding
-│  ├─ breathe.tsx              Box breathing (4-4-4-4)
-│  └─ reset.tsx                "My Quick Reset" (top-rated from Portfolio)
-│
+│  ├─ _layout.tsx              Full-screen modal (no tabs/header)
+│  ├─ index.tsx  ground.tsx  breathe.tsx  reset.tsx
 ├─ exercise/
-│  ├─ _layout.tsx
-│  ├─ [id].tsx                 Exercise detail (desc, steps, duration)
-│  └─ session/[id].tsx         Guided session view (timer / steps)   M2
-│
+│  ├─ [id].tsx                 Exercise detail
+│  └─ session/[id].tsx         Guided session
 ├─ diary/
-│  ├─ _layout.tsx
-│  ├─ new.tsx                  Compose entry (3 prompts + free text)
-│  └─ [id].tsx                 View / edit / delete entry
-│
+│  ├─ new.tsx                  Compose entry
+│  └─ [id].tsx                 View / edit / delete
+├─ profile/
+│  ├─ index.tsx  settings.tsx  data.tsx  about.tsx
 └─ onboarding/
-   ├─ _layout.tsx
-   └─ index.tsx               7-step welcome carousel (skippable)   M3
+   └─ index.tsx                (M3) 7-step skippable
 ```
 
-**NOTE:** Settings + Export (M3/M4) are pushed as stack screens from Dashboard (cog) — they are
-NOT tabs. Keep the 5-tab contract stable.
+Full route→file→data-call map in `02-routing-map.md`.
 
 ---
 
-## 3. The Shell — Screen Anatomy (every tab)
-
-Each tab is wrapped in the same `AppShell` component. Rendered top-to-bottom. The Crisis FAB is
-outside the tab bar scroll region so it never moves.
+## 5. The Shell — Screen Anatomy (every tab)
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
 │  ▲ StatusBar (expo-status-bar, style="auto")                  │
 │  ┌─────────────────────────────────────────────────────────┐ │
 │  │  HEADER (app-topbar)                 [surface]           │ │
-│  │  Title (app-title)         ...      (cog→Settings, ⌘M)  │ │
+│  │  Title (app-title)          ...   (🕶 avatar → /profile) │ │
 │  └─────────────────────────────────────────────────────────┘ │
 │                                                               │
 │  ┌─────────────────────────────────────────────────────────┐ │
 │  │  BODY (app-body) — flex:1, scrollable                 │ │
 │  │                                                        │ │
-│  │     <ScreenContent/>   ← each tab renders its content  │ │
-│  │     (check-in / pdf / ex-cards / prompts / portfolio)  │ │
+│  │     <ScreenContent/>  ← per-screen 3–5 actions         │ │
+│  │     (check-in card / pdf / ex-cards / prompts / ...)   │ │
 │  │                                                        │ │
-│  │  ...empty-space / padding-bottom so FAB never covers   │ │
-│  │     the last item (bottom padding = 80)                │ │
+│  │  ...bottom padding = 80 so the FAB never covers        │ │
+│  │     the last item                                      │ │
 │  └─────────────────────────────────────────────────────────┘ │
 │                                                               │
 │  ┌─────────────────────────────────────────────────────────┐ │
-│  │  TAB BAR (bottom-nav)           [surface]                │ │
+│  │  TAB BAR (bottom-nav)            [surface]               │ │
 │  │                                                         │ │
 │  │    ◧          ▢          ◈          ✎          ◐        │ │
-│  │  Dashboard   Toolkit   Exercises   Diary    Portfolio   │ │
-│  │   (active)  [icon]     [icon]     [icon]     [icon]     │ │
+│  │   Home      Toolkit    Exercises    Diary   Portfolio   │ │
+│  │  (active)   [icon]     [icon]     [icon]    [icon]      │ │
 │  └─────────────────────────────────────────────────────────┘ │
 │                                                               │
 │                    ╔═══════════════════╗                       │
-│                    ║  ☰  Crisis FAB   ║  ←-- FLOATS over body  │
-│                    ║  (56×56,radius-full)║   + tab bar, always  │
+│                    ║  ☰  Crisis FAB   ║  ←-- floats over body │
+│                    ║  (56×56,radius-full)║   + tab bar        │
 │                    ╚═══════════════════╝                       │
 └───────────────────────────────────────────────────────────────┘
 ```
@@ -145,74 +218,40 @@ outside the tab bar scroll region so it never moves.
 | Crisis FAB    | `.fab` — fixed, 56×56, `--radius-full`, `--shadow-lg`                             |
 
 **Active-tab rule:** exactly one `.nav-item` has `.is-active` → `--color-primary` text+icon, weight 700.
+**Header avatar rule:** top-right on every tab → `profile/` stack (low-frequency actions, never a tab).
 
 ---
 
-## 4. Crisis FAB — placement & z-index
-
-The FAB is the single most important element. It must always be reachable in ≤1 tap, in every
-screen, light or dark, online or offline.
+## 6. Crisis FAB — placement & z-index
 
 ```
-           Container: fixed, bottom: 24 + tab-bar-height, right: 24
-           z-index: > tab bar (see token zIndex: modal 400, toast 500)
-           size:    56x56, radius full, bg = --color-error (#BF3A2A light / #E87A6A dark)
-           content: ☰ / "+" glyph, `--color-text-inverse`
+Container: fixed, bottom: 24 + tab-bar-height, right: 24
+z-index:    > tab bar (see token zIndex: modal 400, toast 500)
+size:       56×56, radius full, bg = --color-error
+content:    ☰ / "+" glyph, --color-text-inverse
 
-           Tap → push /crisis (full-screen modal). NO confirmation dialog.
-           Offline: fully functional (bundled content, no network call).
-           If a crisis gesture is used, DO NOT log, track, or analyse it.
+Tap → push /crisis (full-screen modal). NO confirmation dialog.
+Offline: fully functional. If a crisis gesture is used, DO NOT log it.
 ```
 
 ---
 
-## 5. Dash / Home (index) — block-level wireframe
+## 7. Tab-by-tab summary
 
-The home screen shows a check-in card (M3) that is the entry point to trigger logging.
-
-```
-┌─────────────────────────────────────────────┐
-│  CalmAnchor            ☰(menu)  ⚙(settings) │
-├─────────────────────────────────────────────┤
-│                                             │
-│  ┌───────────────────────────────────────┐  │
-│  │  💬 HOW ARE YOU RIGHT NOW?  [primary] │  │  ← check-in-card (M3)
-│  │  [ ns_state pills: fight flight … ]   │  ── window-of-tolerance state
-│  │  [ survival response chips ]          │  ── survival response grid
-│  │  [ + Add a trigger ]                  │  ── trigger tracker entry
-│  │  [ Save check-in ]  (btn-accent)      │  ── saveCheckin() → checkins
-│  └───────────────────────────────────────┘  │
-│                                             │
-│  ┌  QUICK RELIEF (ex-row) ──────────────┐   │
-│  │  [Breathe] [Ground] [Reset] [🧡]      │   │  ← ex-tile, links to /crisis
-│  └───────────────────────────────────────┘   │
-│                                             │
-│  ┌  TODAY'S REFLECTION (list-item) ─────┐   │
-│  │  "How does it feel now?" → /diary     │   │
-│  └───────────────────────────────────────┘   │
-│                                             │
-└─────────────────────────────────────────────┘
-                   [  ╔ Crisis FAB ╗  ]
-```
+| Tab        | Vertical(s)            | 3–5 actions (do/answer)                                   | Route | M |
+|------------|------------------------|-----------------------------------------------------------|-------|---|
+| **Home**   | Check-in · Review · Do | check-in, quick relief, today's prompt, quick-start | `(tabs)/index` | M3 |
+| **Toolkit**| Learn/Read             | browse chapters, open PDF+jump, resume, search, find ex  | `(tabs)/toolkit` | M2 |
+| **Exercises**| Find/Choose · Do     | browse 6 categories, open steps, start session, fav, "what helps now" | `(tabs)/exercises` | M2 |
+| **Diary**  | Reflect                | see prompts, write, review, edit/delete, tag             | `(tabs)/diary` | M2 |
+| **Portfolio**| Review · Do (M3)    | favourites, safe-space notes, custom, reorder            | `(tabs)/portfolio` | M3 |
+| **Dashboard**| Review (M3)         | 4 descriptive charts; no mood trend (S26)                | `(tabs)/dashboard` | M3 |
+| **Crisis** | Do (emergency)         | ground, breathe, quick reset, UK contacts                | `crisis/*` | M1 |
+| **Profile**| Privacy · First-Touch  | research profile, settings, export, delete-all, about    | `profile/*` | M3 |
 
 ---
 
-## 6. Tab-by-tab content outline
-
-| Tab         | Route            | Primary content (M-)                                    | Data call (`lib/db.ts`)        |
-| ----------- | ---------------- | ------------------------------------------------------- | ------------------------------ |
-| Dashboard   | `index.tsx`      | Check-in card, quick relief tiles, today's reflection    | `saveCheckin()` / `saveMoodLog()` |
-| Toolkit     | `toolkit.tsx`    | PDF viewer + chapter list → page jump                     | `getChapters()`               |
-| Exercises   | `exercises.tsx`  | Category cards → exercise list                            | `getAllExercises()`           |
-| Diary       | `diary.tsx`      | Prompt list + entry timeline                             | `getJournalEntries()`         |
-| Portfolio   | `portfolio.tsx`  | Favourites, safe-space notes, custom strategies           | (M3: `favourites`, `safe_space_notes`, `custom_strategies`) |
-
-> Confirm against `docs/progress/` milestones. Toolkit/Diary/Exercises are M2; Portfolio is M3;
-> Dashboard check-in is M3. The shell (this doc) is M1 and should be built first.
-
----
-
-## 7. Legend
+## 8. Legend
 
 ```
 [text]      = a screen / route  │ (text) = a user action  │ text = microcopy
@@ -222,5 +261,5 @@ The home screen shows a check-in card (M3) that is the entry point to trigger lo
 ──           = arrow / flow direction
 ```
 
-**Cross-reference:** each block is linked to a design-system `.class` and a token from
-`theme/tokens.ts`. When implementing, use the token, never hard-code a hex.
+**Cross-reference:** each block links to a design-system `.class` and a token from `theme/tokens.ts`.
+When implementing, use the token, never hard-code a hex. UK spelling throughout.
