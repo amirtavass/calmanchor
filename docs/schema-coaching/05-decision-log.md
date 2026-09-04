@@ -82,3 +82,31 @@ Format follows the ADR pattern: context, decision, rationale, consequences. Deci
 - Decision: the agent may implement a fix AFTER the student has articulated the gap in their own words and explicitly approved the approach. This is a standing project rule, not a trial.
 - Rationale: the student remains the decision-maker and learns the reasoning; the agent removes mechanical friction.
 - Consequences: AGENT.md session protocol includes the articulation gate.
+
+## D12 - RLS strategy resolved: content public, user data owner-only
+
+- Context: D08 left the final RLS choice to the student's ADR. On 26 Aug the student presented selective RLS (user-data tables only, because content is shared across users); the lead initially suggested enabling RLS on ALL tables to avoid per-table runtime access checks.
+- Decision: the selective model was accepted, on condition that the decision and its implications are documented (student ADR). Content tables (chapters, exercises, prompts, PDF path) are publicly readable without authentication; EVERY user-data table enforces owner-only RLS. Reconfirmed 28 Aug.
+- Rationale: unauthenticated access to educational content is an intentional product direction (S07 - the PDF must be viewable before sign-in); user data is the sensitive surface. The runtime-complexity concern is retired by documenting the policy per table.
+- Consequences: story S04 remains the test (no cross-user read by any query path, with RLS on). The student's ADR records the table-by-table choice and why.
+
+## D13 - "Delete my data" is anonymisation by UUID rotation
+
+- Context: S05 (delete all data) and S22 (delete a single entry) left delete semantics open pending an ADR decision.
+- Decision: "delete my data" rotates the user's internal UUID to a NEW random value across every user-data row, in one transaction; the old/new mapping is never stored. The user becomes a fresh anonymous entity and the data stays usable for research; each further deletion cycle creates another anonymous identity. Individual journal entries (and exercise session entries) requested by the user are hard-deleted row-by-row, at any time, including within the edit window. "Delete my account" (full removal) is a distinct action from "delete my data".
+- Rationale: hard deletion destroys the research value of behavioural data; UUID rotation preserves longitudinal records with no re-identification path. Row-level deletes respect user agency without touching any other record.
+- Consequences: no cascade-delete requirement from user to user-data tables; no mapping table may exist anywhere; stories S05 and S22 updated; app copy must distinguish "delete my data" from "delete my account".
+
+## D14 - Navigation: bottom tabs + persistent crisis button (no hamburger)
+
+- Context: a 28 Aug proposal put secondary items in a hamburger menu. On 2 Sep the build agent pushed back: hamburger menus hide primary navigation, reduce discoverability, and are particularly problematic for trauma-informed apps where the crisis path must be reachable in one tap.
+- Decision: sticky bottom tab bar with 4-5 tabs (Toolkit, Exercises, Journal/Diary, Portfolio/Dashboard) + a header avatar for profile/settings + a persistent floating Crisis button that is NEVER buried in a menu. Hamburger rejected as a primary AND secondary pattern for this app. Components follow Google Material Design 3; colour, typography and tokens come from the EXISTING design system - the agent must never invent a new design system.
+- Rationale: one-tap crisis access and discoverability outweigh menu tidiness; the agent's critique was accepted (the original prompt had been ambiguous).
+- Consequences: every ASCII screen design must include the Crisis FAB; exercises landing page uses category cards (Layout A); design-system tokens are the style source of truth.
+
+## D15 - PHQ-9 and PCL-5 questionnaires deferred
+
+- Context: structured clinical questionnaires were floated as possible in-app measures.
+- Decision: not in the MVP. Revisit after store readiness. SUDS distress and helpfulness remain the only structured in-app metrics.
+- Rationale: questionnaire administration adds burden and clinical-administration questions with no clear MVP use; the session-anchored measures (D04) already cover the evidence base.
+- Consequences: no questionnaire tables in the M1/M2 schema; tracked as a deferred idea, not a requirement.

@@ -8,15 +8,16 @@ Briefing status: stories are marked [BRIEFED] or [NOT YET BRIEFED]. BRIEFED = th
 
 ---
 
-## A - Onboarding and auth [NOT YET BRIEFED]
+## A - Onboarding and auth [BRIEFED - supervision 26 & 28 Aug: browse-first onboarding, Google-only sign-in (S02), research profile at sign-up (S03)]
 
 ### S01 - First-launch onboarding
 As a new user, I want a guided onboarding the first time I open the app, so that I understand what Calm Anchor is and how to get started.
 Acceptance criteria:
 - Onboarding runs on first launch only.
 - It includes an app walkthrough and a nervous-system primer (the workbook's introductory material).
-- It guides the user through Google sign-in.
-- Completing onboarding lands the user on the home screen.
+- The walkthrough comes BEFORE any sign-in prompt: the user can browse the workbook, chapters and exercises unauthenticated (clarified 28 Aug).
+- Sign-in with Google is triggered when the user first attempts an exercise, not at first launch.
+- Completing sign-up lands the user on the home screen; onboarding completion can be derived from profile existence.
 Schema implications: `users` and `profiles` tables; onboarding completion can be derived from profile existence.
 
 ### S02 - Google sign-in only
@@ -47,14 +48,14 @@ Schema implications: RLS policies (owner-only) on all user-data tables; foreign 
 ### S05 - Delete my data
 As a user, I want to delete all of my data, so that I can fully withdraw from the app.
 Acceptance criteria:
-- A single action deletes the user's journal entries, exercise sessions, check-ins, tags, and profile.
-- The user record itself is deleted (or irrevocably anonymised - decision to be recorded in an ADR).
-- No orphaned records remain after deletion.
-Schema implications: cascade delete (or equivalent) from user to all user-data tables.
+- A single action ("delete my data") anonymises the user: the internal UUID is replaced with a NEW random UUID on every user-data record; the old/new mapping is never stored, so re-identification is impossible.
+- The user becomes a fresh anonymous entity; repeated deletion cycles create a new anonymous identity each time (decision D13).
+- "Delete my account" (full removal) is a separate action from "delete my data" (anonymisation).
+Schema implications: one transaction updates user_id (or owner key) on all user-data rows to a fresh UUID. No cascade delete and NO mapping table may exist.
 
 ---
 
-## B - Content and the workbook [BRIEFED - PDF viewer, chapters and exercise catalogue were discussed in supervision; the rest follows the workbook]
+## B - Content and the workbook [BRIEFED - supervision 26 & 28 Aug: catalogue/PDF viewer, public-read content, PDF served from private Supabase storage (S07/S28)]
 
 ### S06 - Browse the chapters
 As a user, I want to browse the workbook chapters in order, so that I can find the material relevant to me.
@@ -104,7 +105,7 @@ Schema implications: `exercises` rows with crisis exercise_type; no crisis-speci
 
 ---
 
-## C - Exercise sessions [NOT YET BRIEFED - session metrics (distress/helpfulness) decided by the lead; see 04-wellbeing-metrics.md]
+## C - Exercise sessions [BRIEFED - supervision 28 Aug: full session flow walked through; SUDS distress + helpfulness agreed with the student (see 04-wellbeing-metrics.md)]
 
 ### S12 - Start a guided exercise
 As a user, I want to start an exercise and have the app record when I started, so that my history is accurate.
@@ -159,7 +160,7 @@ Schema implications: no unique constraints on (user_id, exercise_id, date). Appe
 
 ---
 
-## D - Journal [NOT YET BRIEFED]
+## D - Journal [BRIEFED - supervision 28 Aug: plain-text entries, edit window (S21), single-entry delete (S22), workbook-grounded prompts only (S23)]
 
 ### S19 - Plain-text journal entry
 As a user, I want to write a plain-text journal note at any time, so that I can record my thoughts when I choose to.
@@ -187,7 +188,7 @@ Schema implications: created_at + updated_at; the window can be computed from cr
 As a user, I want to delete an individual journal entry, so that I can remove something I do not want kept.
 Acceptance criteria:
 - Deleting one entry does not affect any other record.
-Schema implications: delete policy on `journal_entries` (soft or hard delete - decision to be recorded in an ADR).
+Schema implications: single-row hard delete on `journal_entries`; the user may delete an individual entry at any time, including within the edit window (decision D13).
 
 ### S23 - Prompted journaling
 As a user, I want to write a journal entry from a workbook reflection prompt, so that I have a starting point when I want one.
@@ -205,7 +206,7 @@ Schema implications: none required - verify no constraints exist.
 
 ---
 
-## E - Check-ins and mood [PARTIALLY BRIEFED - check-ins table exists in the scaffold and was reviewed; the no-dashboard rule is NOT YET BRIEFED]
+## E - Check-ins and mood [BRIEFED - supervision 28 Aug: check-ins reviewed; the no-mood-dashboard rule (S26) explicitly agreed; metrics stored raw for research only]
 
 ### S25 - Check-in
 As a user, I want to record a check-in (nervous-system state, survival response, triggers, note), so that I can track my state over time.
@@ -223,13 +224,13 @@ Schema implications: a NON-requirement: no aggregation view/endpoint is required
 
 ---
 
-## F - Research and privacy [PARTIALLY BRIEFED - workbook out of the repo was discussed; export and timestamps are NOT YET BRIEFED]
+## F - Research and privacy [BRIEFED - supervision 26 & 28 Aug: PDF out of repo (S28), anonymised export scope (S27), offline-ready timestamps (S29)]
 
 ### S27 - Anonymised research export
 As a researcher, I want to export all users' data with no personally identifiable information, so that research can proceed without exposing identities.
 Acceptance criteria:
 - Export includes demographics (age band, gender, ethnicity, treatment status, referral) and wellbeing metrics (distress before/after, helpfulness) plus behavioural data (sessions, journal, check-ins).
-- Export EXCLUDES email, display name, Google identity, and any free-text that could identify the user (notes and journal bodies are excluded or reviewed - decision to be recorded in an ADR).
+- Export EXCLUDES email, display name, Google identity, and any free-text that could identify the user; journal bodies and free-text notes are excluded by default (agreed 28 Aug - see D07).
 - The export is a developer/researcher tool, not a user-facing feature (no UI).
 Schema implications: identity columns and research columns must be separable in queries; a research-view or export query that selects only non-PII columns. Journal/notes bodies are PII-adjacent - exclude by default.
 
