@@ -2,6 +2,52 @@
 
 Append-only record of changes (decisions + progress). Newest first. Never edit or delete a past entry.
 
+## 2026-09-05 — Design-system reconciliation + M2 data/auth hardening
+
+### Design system reconciliation (source of truth = `designsystemtext.txt` v2.0)
+- **Fixed `design-system/calm-anchor-design-system.css` dark-mode tokens** to match Aamir's spec exactly.
+  Previously the CSS dark palette diverged (brighter/warm-tuned); now aligned: ns-hyper `#D4744A`,
+  ns-hypo `#7A96AA`, sr-fight `#D96050`, sr-flight `#E09050`, sr-freeze `#7A96AA`, sr-fawn `#A888C4`,
+  mood-1..5 `#D96050/#E09050/#D8A830/#7ABE88/#68C48A`, ex-breath `#5AADC0`, ex-ground `#7BBE96`,
+  ex-somatic `#B09070`, ex-journal `#9A8AC4`, ex-selfkind `#D490A8`, ex-crisis `#D96050`, plus all
+  `-bg` backgrounds and text-muted `#B8A878` / text-faint `#62594D`.
+- `theme/tokens.ts` already matched the spec (verified) — the CSS was the only divergence; now both align.
+
+### Data hardening (per 2 Sep meeting: personas + stress test)
+- **`services/personas.ts`** — seeds 3 persona users via the service role: **active** (5 check-ins,
+  8 sessions, 6 journal entries), **power** (3 check-ins, 12 sessions, 2 entries), **infrequent**
+  (1/1/1 over 14 days). `npm run personas`.
+- **Extended `services/verify-schema.ts`** with Engine A2 data-driven lifecycle checks against the
+  persona data: **S17 (session history), S18 (multi/day), S19 (journal independent), S20 (journal tags),
+  S21 (edit-window timestamps), S22 (single delete), S24 (unlimited entries/day)**.
+- **Verification now 29/29 PASS** (was 22). Remaining UNTESTED: S26/S27/S29 (introspection, need
+  `SUPABASE_DB_URL`), S10/S12/S13 (schema-only).
+
+### Google-only auth (S02/D02/S01)
+- **`lib/auth.ts` rewritten**: no more anonymous sign-in. `getCurrentUserId()` returns id or `null`;
+  `signInWithGoogle()` (OAuth, deep-link `calmanchor://auth/callback`); `ensureSignedIn()` — the guard
+  prompted at first exercise attempt (browse-first, S01); `signOut()`.
+- **`lib/db.ts`**: all user-scoped writes/reads (`saveJournalEntry`, `getJournalEntries`, `saveCheckin`,
+  `getCheckins`, `saveSession`, `getSessions`, profile, tags) now call `ensureSignedIn()`.
+
+### Anonymisation (S05/D13) + single-entry delete (S22)
+- **`supabase/anonymise.sql`** — `anonymise_user(p_user_id)` SQL function: rotates the user's UUID across
+  all user-data tables to a fresh random id, clears PII on `users` (email/display_name/google_identity),
+  mapping not stored. **Run in SQL editor** (like schema/rls).
+- **`lib/db.ts`**: `anonymiseMyData()` (calls the RPC) + `deleteJournalEntry(id)` (single entry, any time).
+
+### Docs sync (this session)
+- **New ADRs recorded (accepted):** ADR-002 (Google-only auth), ADR-006 (anonymisation by UUID
+  rotation), ADR-009 (screen mapping → M2). Register + candidate list updated in `docs/decisions/`.
+- **Screen mapping moved to M2** (2 Sep meeting, "screening tasks can be moved to M2"): M1-21 split —
+  shell + exercises mapping DONE in M1; Toolkit/Diary/Home/check-in/Crisis/Profile now M2-11/M2-12.
+  Updated: `milestones/m1-project-setup.md` (M1-21 + deferred list), `milestones/m2-core-app.md`
+  (full A–D plan + M2-07..M2-16), `01-overview.md` (M1 DONE, M2 IN_PROGRESS),
+  `docs/ui/01-navigation-and-ia.md` (milestone tag → M2).
+- `supabase/schema.sql` + `supabase/rls.sql` are **unchanged** — the live DB is already on the current
+  schema (personas + verify run against it); only `supabase/anonymise.sql` is new this session (run in
+  the SQL editor).
+
 ## 2026-08-30 — M1 completion: seed + RLS fix + full schema verification
 
 - **Seed ran** against live Supabase (service role): **20 chapters / 35 exercises / 3 prompts / 3 system tags**. Confirmed.

@@ -21,15 +21,22 @@ copy the format and headings; do not edit the template itself (it is project-lea
 |---|---|---|---|---|
 | ADR-001 | Toolkit PDF read source | accepted | 2026-08-30 | Amirreza |
 | ADR-003 | RLS: on all tables, difference in the policy | accepted | 2026-08-30 | Amirreza |
+| ADR-002 | Auth: Google-only sign-in, no anonymous path | accepted | 2026-09-05 | Amirreza |
+| ADR-006 | "Delete my data" is anonymisation by UUID rotation | accepted | 2026-09-05 | Amirreza |
+| ADR-009 | Journey-first screen mapping is M2 scope | accepted | 2026-09-05 | Amirreza |
 
 > Remaining known candidate ADRs (shape from `schema-coaching/templates/ADR.md`, not yet written):
-> - **ADR-002** Auth — anonymous (`lib/auth.ts`) vs Google-only (S01/S02), + `users`/`profiles` tables
-> - **ADR-004** Journal entry deletion — soft vs hard delete (source: S22)
+> - **ADR-004** Journal entry deletion — soft vs hard delete (source: S22; D13 resolves to row-level hard
+>   delete at any time)
 > - **ADR-005** Research export — free-text inclusion policy (source: S27)
+> - **ADR-007** Dummy-data personas + schema stress-test as the M2 build gate — `services/personas.ts`
+>   (`@persona.calm` accounts), Engine A2 → 29/29 PASS
+> - **ADR-008** Design-system single source of truth — `designsystemtext.txt` v2.0; `theme/tokens.ts` +
+>   app CSS reconciled to it (one divergence found & fixed)
 
 ## Next-up
 
-The remaining open ADR is **auth** (ADR-002): the repo currently uses silent anonymous sign-in
-(`lib/auth.ts`), but `docs/schema-coaching/01-user-stories.md` S01/S02 require **Google-only** sign-in with
-a `users` table + `google_identity` reference and no password columns. Record the resolution here rather than
-silently choosing a side (per D01/D09). (RLS — the former ADR-003 — is now resolved as ADR-003.)
+ADR-002 (auth), ADR-006 (anonymisation) and ADR-009 (screen mapping → M2) are now recorded as accepted.
+Remaining candidates to write soonest: **ADR-007** (personas + stress-test as the M2 build gate) and
+**ADR-008** (design system single source of truth) — both decisions are already implemented, only the
+records are missing. (RLS — the former ADR-003 — is resolved as ADR-003.)

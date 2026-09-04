@@ -146,6 +146,86 @@ async function engineA() {
 }
 
 // ============================================================
+// ENGINE A2 — data-driven lifecycle checks (uses persona data)
+//   Cover S12/S17/S18/S19/S20/S21/S22/S24 against live rows.
+// ============================================================
+async function engineA2() {
+  console.log("\n=== ENGINE A2: data-driven lifecycle checks (persona data) ===");
+
+  // Pick the persona user (active) for data-driven tests
+  const { data: personaUser } = await admin.from("users").select("id").eq("email", "active@persona.calm");
+  if (!personaUser || personaUser.length === 0) {
+    console.log("  (skipping lifecycle checks — run `npm run personas` first)");
+    return;
+  }
+  const uid = personaUser[0].id;
+
+  // S17 — session history: own sessions, newest first (exercise join present)
+  const { data: sessions, error: sErr } = await admin
+    .from("exercise_sessions")
+    .select("id, exercise_id, started_at, duration_minutes, exercises(title, category)")
+    .eq("user_id", uid)
+    .order("started_at", { ascending: false });
+  if (sErr) {
+    record("S17", false, `session history query error -> ${sErr.message}`);
+  } else {
+    const ordered = (sessions ?? []).every((s: any, i: number) => i === 0 || new Date((sessions as any)[i - 1].started_at) >= new Date(s.started_at));
+    record("S17", (sessions?.length ?? 0) > 0 && ordered && !!sessions?.[0]?.exercises,
+      `S17 own sessions=${sessions?.length ?? 0}, newest-first=${ordered}, exercise-join=${!!sessions?.[0]?.exercises}`);
+  }
+
+  // S18 — multiple sessions per day (no uniqueness on user/day/exercise)
+  const { error: s18err } = await admin.from("exercise_sessions").insert({
+    user_id: uid,
+    exercise_id: sessions?.[0]?.exercise_id ?? null,
+    started_at: new Date().toISOString(),
+  });
+  const { error: s18errb } = await admin.from("exercise_sessions").insert({
+    user_id: uid,
+    exercise_id: sessions?.[0]?.exercise_id ?? null,
+    started_at: new Date(Date.now() + 1000).toISOString(),
+  });
+  record("S18", !s18err && !s18errb, `two same-day inserts: ${s18err?.message ?? s18errb?.message ?? "both succeeded (no uniqueness constraint)"}`);
+
+  // S19 — journal independent of session (no required session FK)
+  const jr = await admin.from("journal_entries").insert({ user_id: uid, body: "verify: independent entry" }).select("id");
+  record("S19", !jr.error, jr.error ? `journal insert error -> ${jr.error.message}` : "journal entry inserted (no session coupling)");
+
+  // S20 — journal tags join works (attach a system tag)
+  const { data: tag } = await admin.from("tags").select("id").eq("name", "anxious").is("user_id", null).limit(1);
+  const { data: entryForTag } = await admin.from("journal_entries").select("id").eq("user_id", uid).order("created_at", { ascending: false }).limit(1);
+  const entryId = (jr.data?.[0] as { id?: string } | undefined)?.id ?? (entryForTag?.[0] as { id?: string } | undefined)?.id;
+  if (tag && tag.length && entryId) {
+    const jr2 = await admin.from("journal_entry_tags").insert({ entry_id: entryId, tag_id: tag[0].id });
+    record("S20", !jr2.error, jr2.error ? `journal tag attach error -> ${jr2.error.message}` : "journal tag attached");
+  } else {
+    record("S20", false, `no system tag 'anxious' or entry to attach (tag=${tag?.length ?? 0}, entry=${!!entryId})`);
+  }
+
+  // S21 — edit window: created_at + updated_at present
+  const s21 = await columnsExist(admin, "journal_entries", ["created_at", "updated_at"]);
+  record("S21", s21, s21 ? "journal_entries has created_at + updated_at (edit-window computable)" : "journal_entries missing timestamps");
+
+  // S24 — unlimited entries per day (no uniqueness on user/day)
+  const d24 = new Date().toISOString();
+  const e24a = await admin.from("journal_entries").insert({ user_id: uid, body: "verify: entry 1", created_at: d24 });
+  const e24b = await admin.from("journal_entries").insert({ user_id: uid, body: "verify: entry 2", created_at: d24 });
+  record("S24", !e24a.error && !e24b.error, `two same-day entries: ${e24a.error || e24b.error ? "unique constraint hit" : "both succeeded"}`);
+
+  // S22 — single-entry delete does not affect others
+  const { data: entry } = await admin.from("journal_entries").select("id").eq("user_id", uid).order("created_at", { ascending: false }).limit(1);
+  if (entry && entry.length) {
+    const before = (await admin.from("journal_entries").select("*", { count: "exact", head: true }).eq("user_id", uid)) as { count: number | null };
+    const del = await admin.from("journal_entries").delete().eq("id", entry[0].id);
+    const after = (await admin.from("journal_entries").select("*", { count: "exact", head: true }).eq("user_id", uid)) as { count: number | null };
+    record("S22", !del.error && (before.count ?? 0) === (after.count ?? 0) + 1,
+      `delete one entry: ${del.error ? `err ${del.error.message}` : `before=${before.count} after=${after.count}`}`);
+  } else {
+    record("S22", false, "no journal entry to delete");
+  }
+}
+
+// ============================================================
 // ENGINE B — introspection via information_schema (needs DATABASE_URL)
 // ============================================================
 async function engineB(pg: any) {
@@ -278,6 +358,7 @@ async function main() {
   }
 
   await engineA();
+  await engineA2();
   if (dbUrl) {
     const postgres = await import("postgres");
     const pg = postgres.default(dbUrl, { max: 1 });

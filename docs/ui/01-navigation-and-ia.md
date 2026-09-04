@@ -1,6 +1,6 @@
 # CalmAnchor — UI/UX: Navigation Shell & Information Architecture
 
-> **Status:** Draft v2 · **Milestone:** M1/M2 (shell + journey mapping)
+> **Status:** Draft v2 · **Milestone:** M2 (screen mapping — shell + exercises done in M1; Toolkit/Diary/Home/check-in/Crisis/Profile in progress)
 > **Design source of truth:** `design-system/calm-anchor-design-system.css`
 > **Rendering baseline:** Expo Router (`app/` = file-based routes)
 > **Route map:** see `02-routing-map.md` (this doc covers *why* each screen exists; that doc covers *what route/file*).

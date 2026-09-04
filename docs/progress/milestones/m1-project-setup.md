@@ -27,6 +27,7 @@
 | 2026-08-30 | M1-18 | Dev-build path chosen (EAS cloud build); install `expo-dev-client` + `eas.json` | IN_PROGRESS | `eas.json`, `package.json` (expo-dev-client ~57.0.16), `app.json` | **Decided:** keep SDK 57 + dev build (not downgrade) so `react-native-pdf` native module works. `expo-dev-client@~57.0.16` installed (peer-dep conflict resolved with `--legacy-peer-deps`). `eas.json` has `development`(APK)/`preview`/`production`. **Blocked on interactive `eas login`/`eas init`** (adds `extra.eas.projectId` to `app.json`) then `eas build --profile development --platform android` → APK. This resolves the M1-17 BLOCKED row. |
 | 2026-08-30 | M1-19 | Schema verifier: `services/verify-schema.ts` + `npm run verify` | DONE | `npm run verify` → 20/20 PASS | Runs the query-pack checks live. `verify:rls` for S04/S05 (2-user isolation, not run). Engine B (introspection) needs `SUPABASE_DB_URL`. Results logged in `docs/schema-coaching/03-schema-status.md`. |
 | 2026-08-30 | M1-20 | RLS isolation fix (S04) + full live verification | DONE | `supabase/rls.sql` idempotent per-op policies; `npm run verify:rls` → 22/22 PASS | Stale `checkins` INSERT policy was rejecting owner inserts. Rewrote RLS as per-operation policies (`drop if exists` + select/insert/update/delete). S04 PASS, S05 PASS, seed re-confirmed. S26/S27/S29 + sequence stories still UNTESTED (need `SUPABASE_DB_URL`). |
+| 2026-09-05 | M1-21 | Screen mapping (3–5 actions per screen → user journeys + ASCII): shell + exercises | DONE | `docs/ui/01-navigation-and-ia.md` v2, `docs/ui/sections/exercises/01-landing-variants.md` + `02-exercise-detail.md` + `03-session-flow.md` | Extension to Toolkit, Diary, Home/check-in, Crisis, Profile **moved to M2** (2 Sep meeting: "screening tasks can be moved to M2") — tracked as M2-11/M2-12. |
 
 ## Summary
 
@@ -36,7 +37,8 @@
 > tokens/theme, workbook content mapped to screens (Toolkit PDF + seed), and full live schema verification
 > (22/22 PASS). EAS dev build (M1-17/M1-18) done and installed.
 >
-> **Deferred to M2** (scope-doc dependency ordering, per Aamir): nav shell (M1-13), Crisis FAB (M1-14).
+> **Deferred to M2** (scope-doc dependency ordering, per Aamir): nav shell (M1-13), Crisis FAB (M1-14),
+> full screen mapping (M1-21 → M2-11/M2-12).
 > **Remaining M1 hygiene:** verify on-device (M1-15) + open draft PR; remaining schema-coaching stories
 > (S26/S27/S29 + sequence) need `SUPABASE_DB_URL` for Engine B introspection.
 > See `../06-changelog.md`, `../07-questions-for-aamir.md`.

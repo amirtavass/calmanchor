@@ -236,8 +236,8 @@
   --color-border:           #7A8A72;
 
   --color-text:         #F4F1EB;
-  --color-text-muted:   #C9B896;
-  --color-text-faint:   #8A7B5A;
+  --color-text-muted:   #B8A878;
+  --color-text-faint:   #62594D;
   --color-text-inverse: #1E2E16;
 
   --color-warm-gold:       #D4B882;
@@ -265,45 +265,45 @@
   --ns-window:        #68C48A;
   --ns-window-bg:     #1F3A2A;
   --ns-window-border: #2A4A38;
-  --ns-hyper:         #E88A64;
-  --ns-hyper-bg:      #3A2518;
+  --ns-hyper:         #D4744A;
+  --ns-hyper-bg:      #2C1A12;
   --ns-hyper-border:  #4A3520;
-  --ns-hypo:          #8AB0C4;
-  --ns-hypo-bg:       #1A2A2A;
+  --ns-hypo:          #7A96AA;
+  --ns-hypo-bg:       #141E26;
   --ns-hypo-border:   #2A3A3A;
 
-  --sr-fight:   #E88A64;
-  --sr-flight:  #E8A864;
-  --sr-freeze:  #8AB0C4;
-  --sr-fawn:    #B87888;
-  --sr-fight-bg:  #3A2518;
-  --sr-flight-bg: #3A2A18;
-  --sr-freeze-bg: #1A2A2A;
-  --sr-fawn-bg:   #2A1A1E;
+  --sr-fight:   #D96050;
+  --sr-flight:  #E09050;
+  --sr-freeze:  #7A96AA;
+  --sr-fawn:    #A888C4;
+  --sr-fight-bg:  #2A1410;
+  --sr-flight-bg: #2A1E10;
+  --sr-freeze-bg: #141C24;
+  --sr-fawn-bg:   #1E1624;
 
-  --mood-1:    #E88A64;
-  --mood-2:    #E8A864;
-  --mood-3:    #E8C860;
-  --mood-4:    #8ACFA4;
+  --mood-1:    #D96050;
+  --mood-2:    #E09050;
+  --mood-3:    #D8A830;
+  --mood-4:    #7ABE88;
   --mood-5:    #68C48A;
-  --mood-1-bg: #3A2518;
-  --mood-2-bg: #3A2A18;
-  --mood-3-bg: #3A3520;
-  --mood-4-bg: #1F3A2A;
+  --mood-1-bg: #2A1410;
+  --mood-2-bg: #2A1E10;
+  --mood-3-bg: #28220C;
+  --mood-4-bg: #182A1C;
   --mood-5-bg: #1A3220;
 
-  --ex-breath:    #6AC4D8;
-  --ex-breath-bg: #1A2A2A;
-  --ex-ground:    #8ACFA4;
-  --ex-ground-bg: #1F3A2A;
-  --ex-somatic:   #C4A080;
-  --ex-somatic-bg:#3A2A1A;
-  --ex-journal:   #A890C4;
-  --ex-journal-bg:#2A1A2A;
-  --ex-selfkind:  #E8A8B8;
-  --ex-selfkind-bg:#3A2A1A;
-  --ex-crisis:    #E88A64;
-  --ex-crisis-bg: #3A2518;
+  --ex-breath:    #5AADC0;
+  --ex-breath-bg: #102028;
+  --ex-ground:    #7BBE96;
+  --ex-ground-bg: #122018;
+  --ex-somatic:   #B09070;
+  --ex-somatic-bg:#241C12;
+  --ex-journal:   #9A8AC4;
+  --ex-journal-bg:#1A1428;
+  --ex-selfkind:  #D490A8;
+  --ex-selfkind-bg:#281420;
+  --ex-crisis:    #D96050;
+  --ex-crisis-bg: #2A1410;
 
   --color-success:        #68C48A;
   --color-success-hover:  #58A478;

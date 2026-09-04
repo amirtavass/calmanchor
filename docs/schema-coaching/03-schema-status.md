@@ -96,6 +96,27 @@ SQL editor. Verified on the live instance.
 **Remaining schema-coaching stories still UNTESTED** (need `SUPABASE_DB_URL` for Engine B introspection):
 S26, S27, S29, and the sequence/static stories (S10/S12/S13/S17/S18/S21/S22/S24).
 
+## Session 2026-09-05 — personas + lifecycle checks; 29/29 PASS
+
+Ran `services/personas.ts` (3 persona users) then extended `services/verify-schema.ts` with Engine A2
+data-driven lifecycle checks. Verification now **29 checks, 29 PASS** (`npm run verify:rls`).
+
+| Date | Story | Status | Evidence | Notes |
+|---|---|---|---|---|
+| 2026-09-05 | S17 | PASS | own sessions=10, newest-first, exercise join present | persona data (active) |
+| 2026-09-05 | S18 | PASS | two same-day session inserts both succeed | no (user,day,exercise) uniqueness |
+| 2026-09-05 | S19 | PASS | journal entry inserted independent of any session | no required session FK |
+| 2026-09-05 | S20 | PASS | journal tag attach succeeded (system tag 'anxious') | |
+| 2026-09-05 | S21 | PASS | journal_entries has created_at + updated_at | edit-window computable |
+| 2026-09-05 | S22 | PASS | delete one entry: before=11 after=10, others intact | |
+| 2026-09-05 | S24 | PASS | two same-day journal entries both succeed | no (user,day) uniqueness |
+
+**Still UNTESTED (need `SUPABASE_DB_URL` for Engine B):** S26 (no mood view), S27 (PII separation),
+S29 (timestamps all user-data tables), and schema-only S10/S12/S13.
+
+**Auth/export changes recorded (not schema-test failures):** Google-only auth (S02) reconciled in code
+(`lib/auth.ts`); anonymisation function (S05/D13) added as `supabase/anonymise.sql` (run in SQL editor).
+
 ## Open questions for Aamir
 
 (Anything the agent cannot resolve from the stories, the workbook, or the schema. The student brings these to supervision.)

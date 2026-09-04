@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import { getCurrentUserId } from "./auth";
+import { ensureSignedIn } from "./auth";
 
 // ============================================================
 // TYPES
@@ -43,11 +43,15 @@ export interface TagInput {
 // JOURNAL ENTRIES
 // ============================================================
 export async function saveJournalEntry(entry: JournalEntryInput) {
+  const userId = await ensureSignedIn();
+  if (!userId) throw new Error("Sign-in required to save a journal entry");
   const { error } = await supabase.from("journal_entries").insert(entry);
   if (error) throw error;
 }
 
 export async function getJournalEntries() {
+  const userId = await ensureSignedIn();
+  if (!userId) throw new Error("Sign-in required to view your journal");
   const { data, error } = await supabase
     .from("journal_entries")
     .select("*, prompts(prompt_text)")
@@ -60,11 +64,15 @@ export async function getJournalEntries() {
 // CHECKINS
 // ============================================================
 export async function saveCheckin(entry: CheckinInput) {
+  const userId = await ensureSignedIn();
+  if (!userId) throw new Error("Sign-in required to save a check-in");
   const { error } = await supabase.from("checkins").insert(entry);
   if (error) throw error;
 }
 
 export async function getCheckins() {
+  const userId = await ensureSignedIn();
+  if (!userId) throw new Error("Sign-in required to view check-ins");
   const { data, error } = await supabase
     .from("checkins")
     .select("*")
@@ -77,11 +85,15 @@ export async function getCheckins() {
 // EXERCISE SESSIONS
 // ============================================================
 export async function saveSession(entry: SessionInput) {
+  const userId = await ensureSignedIn();
+  if (!userId) throw new Error("Sign-in required to save a session");
   const { error } = await supabase.from("exercise_sessions").insert(entry);
   if (error) throw error;
 }
 
 export async function getSessions() {
+  const userId = await ensureSignedIn();
+  if (!userId) throw new Error("Sign-in required to view sessions");
   const { data, error } = await supabase
     .from("exercise_sessions")
     .select("*, exercises(title, category)")
@@ -94,7 +106,8 @@ export async function getSessions() {
 // PROFILE (research fields — separately stored, never identity)
 // ============================================================
 export async function getCurrentProfile() {
-  const userId = await getCurrentUserId();
+  const userId = await ensureSignedIn();
+  if (!userId) throw new Error("Sign-in required to view your profile");
   const { data, error } = await supabase
     .from("profiles")
     .select("id, age_band, gender, ethnicity, treatment_status, referral_source")
@@ -105,7 +118,8 @@ export async function getCurrentProfile() {
 }
 
 export async function saveProfile(entry: ProfileInput) {
-  const userId = await getCurrentUserId();
+  const userId = await ensureSignedIn();
+  if (!userId) throw new Error("Sign-in required to save your profile");
   const { error } = await supabase
     .from("profiles")
     .upsert({ user_id: userId, ...entry }, { onConflict: "user_id" });
@@ -126,7 +140,8 @@ export async function getSystemTags() {
 }
 
 export async function createUserTag(entry: TagInput) {
-  const userId = await getCurrentUserId();
+  const userId = await ensureSignedIn();
+  if (!userId) throw new Error("Sign-in required to create a tag");
   const { data, error } = await supabase
     .from("tags")
     .insert({ user_id: userId, name: entry.name })
@@ -134,6 +149,33 @@ export async function createUserTag(entry: TagInput) {
     .single();
   if (error) throw error;
   return data;
+}
+
+// ============================================================
+// S05 / S22 — data deletion & anonymisation
+// ============================================================
+/**
+ * "Delete my data" (S05/D13): rotate this user's UUID across all records
+ * to a fresh anonymous id. Mapping is not stored; re-identification is
+ * impossible. The anonymised rows remain for research (S27).
+ */
+export async function anonymiseMyData(): Promise<string | null> {
+  const userId = await ensureSignedIn();
+  if (!userId) throw new Error("Sign-in required to delete your data");
+  const { data, error } = await supabase.rpc("anonymise_user", { p_user_id: userId });
+  if (error) throw error;
+  return data as string | null;
+}
+
+/**
+ * Delete a single journal entry at any time (S22) — does not affect any
+ * other record. Runs against the user's own rows via RLS.
+ */
+export async function deleteJournalEntry(id: string) {
+  const userId = await ensureSignedIn();
+  if (!userId) throw new Error("Sign-in required to delete an entry");
+  const { error } = await supabase.from("journal_entries").delete().eq("id", id).eq("user_id", userId);
+  if (error) throw error;
 }
 
 // ============================================================

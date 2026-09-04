@@ -38,7 +38,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "verify": "ts-node services/verify-schema.ts",
-    "verify:rls": "ts-node services/verify-schema.ts --rls"
+    "verify:rls": "ts-node services/verify-schema.ts --rls",
+    "personas": "ts-node services/personas.ts"
   },
   "private": true
 }
