@@ -40,7 +40,8 @@
 > **Deferred to M2** (scope-doc dependency ordering, per Aamir): nav shell (M1-13), Crisis FAB (M1-14),
 > full screen mapping (M1-21 → M2-11/M2-12).
 > **Remaining M1 hygiene:** verify on-device (M1-15) + open draft PR; remaining schema-coaching stories
-> (S26/S27/S29 + sequence) need `SUPABASE_DB_URL` for Engine B introspection.
+> (S26/S27/S29 + sequence) — resolved 2026-09-11: Engine B runs via `get_schema_introspection()` RPC
+> (no `SUPABASE_DB_URL`; ADR-010), `npm run verify:rls` → 46/46 PASS.
 > See `../06-changelog.md`, `../07-questions-for-aamir.md`.
 
 ### Expo SDK note (M1-15 / M1-17 / M1-18)

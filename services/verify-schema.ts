@@ -9,7 +9,10 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 //
 // Engines:
 //   A (works now): content/count/column checks via PostgREST table API.
-//   B (optional):  schema introspection (information_schema) — needs DATABASE_URL.
+//   B:            schema introspection (RLS/columns/views) via the
+//                 get_schema_introspection() RPC + service-role key —
+//                 no direct DB connection string required.
+//                 (Run supabase/introspection.sql once in the SQL editor.)
 //
 // RLS isolation (S04) + cascade-delete (S05) create TWO throwaway users and
 // delete them — only runs with --rls. Use --destroy to also purge any
@@ -18,7 +21,6 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const dbUrl = process.env.SUPABASE_DB_URL; // optional — postgres connection string for Engine B
 
 const admin = createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
 
@@ -226,34 +228,31 @@ async function engineA2() {
 }
 
 // ============================================================
-// ENGINE B — introspection via information_schema (needs DATABASE_URL)
+// ENGINE B — introspection via get_schema_introspection() RPC.
+// Uses the service-role key (already used by Engine A) — no
+// SUPABASE_DB_URL / direct Postgres connection required.
 // ============================================================
-async function engineB(pg: any) {
-  console.log("\n=== ENGINE B: schema introspection (information_schema) ===");
+async function engineB() {
+  console.log("\n=== ENGINE B: schema introspection (RPC) ===");
+  const { data, error } = await admin.rpc("get_schema_introspection");
+  if (error) {
+    console.log("  (introspection RPC unavailable — run supabase/introspection.sql in the SQL editor, then re-run.)");
+    return;
+  }
+  const d = data as any;
 
   // S04-ready RLS status for all user-data tables
   const rlsTables = ["checkins", "journal_entries", "exercise_sessions", "checklist_progress", "crisis_plan", "settings", "profiles", "tags", "users"];
-  const { rows: rlsRows } = await pg.query(
-    `SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname='public' AND tablename = ANY($1)`,
-    [rlsTables],
-  );
-  for (const row of rlsRows) {
-    record("S04", row.rowsecurity === true, `RLS enabled on ${row.tablename}`); // false = not enabled
+  const rlsMap: Record<string, boolean> = {};
+  for (const r of d.rls ?? []) rlsMap[r.tablename] = r.rowsecurity === true;
+  for (const t of rlsTables) {
+    record("S04", rlsMap[t] === true, `RLS enabled on ${t}`);
   }
 
   // S29 — created_at + updated_at on all user-data tables
-  const { rows: ts } = await pg.query(
-    `SELECT table_name, string_agg(column_name, ',') AS cols
-     FROM information_schema.columns
-     WHERE table_schema='public' AND column_name IN ('created_at','updated_at')
-     GROUP BY table_name`,
-  );
   const need = ["journal_entries", "exercise_sessions", "checkins", "tags", "profiles"];
   const tsMap: Record<string, Record<string, boolean>> = {};
-  for (const { rows } of await pg.query(
-    `SELECT table_name, column_name FROM information_schema.columns WHERE table_schema='public' AND column_name IN ('created_at','updated_at')`,
-  )) for (const r of rows) (tsMap[r.table_name] ??= {})[r.column_name] = true;
-  void ts;
+  for (const r of d.ts_columns ?? []) (tsMap[r.table_name] ??= {})[r.column_name] = true;
   for (const t of need) {
     const c = tsMap[t];
     const ok = !!c?.created_at && !!c?.updated_at;
@@ -261,24 +260,15 @@ async function engineB(pg: any) {
   }
 
   // S26 — no mood-trend chart/aggregation views
-  const { rows: views } = await pg.query(
-    `SELECT table_name FROM information_schema.views WHERE table_schema='public'`,
-  );
-  const bad = (views ?? []).filter((v: any) => /mood|trend|chart/i.test(v.table_name));
-  record("S26", bad.length === 0, `no mood/trend views${bad.length ? ` (found ${bad.map((b: any) => b.table_name).join(",")})` : ""}`);
+  const bad = (d.views ?? []).filter((v: string) => /mood|trend|chart/i.test(v));
+  record("S26", bad.length === 0, `no mood/trend views${bad.length ? ` (found ${bad.join(",")})` : ""}`);
 
-  // S02/S03 — users table has no password column (introspection authoritative)
-  const { rows: userCols } = await pg.query(
-    `SELECT column_name FROM information_schema.columns WHERE table_name='users' AND table_schema='public'`,
-  );
-  const pwCols = (userCols ?? []).map((c: any) => c.column_name).filter((c: string) => /password/i.test(c));
+  // S02 — users table has no password column (introspection authoritative)
+  const pwCols = (d.users_columns ?? []).filter((c: string) => /password/i.test(c));
   record("S02", pwCols.length === 0, pwCols.length ? `password-like columns: ${pwCols.join(",")}` : "no password columns in users (introspection)");
 
   // S27 — research export: users has identity cols SEPARATE from profiles research cols
-  const { rows: profCols } = await pg.query(
-    `SELECT column_name FROM information_schema.columns WHERE table_name='profiles' AND table_schema='public'`,
-  );
-  const profPII = (profCols ?? []).map((c: any) => c.column_name).filter((c: string) => /email|name|google|phone|password/i.test(c));
+  const profPII = (d.profiles_columns ?? []).filter((c: string) => /email|name|google|phone|password/i.test(c));
   record("S27", profPII.length === 0, profPII.length ? `PII leaked into profiles: ${profPII.join(",")}` : "no identity/PII columns in profiles (research separation holds)");
 }
 
@@ -359,17 +349,7 @@ async function main() {
 
   await engineA();
   await engineA2();
-  if (dbUrl) {
-    const postgres = await import("postgres");
-    const pg = postgres.default(dbUrl, { max: 1 });
-    try {
-      await engineB(pg);
-    } finally {
-      await pg.end();
-    }
-  } else {
-    console.log("\n(Engine B skipped — set SUPABASE_DB_URL to a postgres:// connection string for introspection checks S02pw/S04-rows/S26/S27/S29.)");
-  }
+  await engineB();
 
   if (doRls) await rlsIsolation();
   else console.log("\n(RLS isolation S04 + cascade S05 skipped — pass --rls to run. It only creates/deletes test users.)");

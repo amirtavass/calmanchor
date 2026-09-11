@@ -2,6 +2,34 @@
 
 Append-only record of changes (decisions + progress). Newest first. Never edit or delete a past entry.
 
+## 2026-09-11 — Engine B via RPC; 46/46 PASS (direct-DB password attempt deferred)
+
+### The `SUPABASE_DB_URL` attempt, and why it was parked
+- Tried to connect this machine to Supabase directly for Engine B introspection (S02-rows, S04-rows,
+  S26, S27, S29) via a `postgres://` string in `.env`.
+- **Blockers, in order:** (1) the legacy direct host `db.uqisvrvgjoujxgrqigie.supabase.co` is
+  **IPv6-only** (`AAAA` only) → `getaddrinfo ENOTFOUND` on this Windows machine; (2) the IPv4
+  "Dedicated address" option is a **$4/mo Pro add-on**; (3) the free **shared pooler** needs the DB
+  password, which kept failing `password authentication failed for user "postgres"` after several
+  resets — the dashboard shows `[YOUR-PASSWORD]` placeholders, and the first reset password contained
+  URL-special characters (`!?$` → fixed by percent-encoding) yet auth still failed, so the password
+  itself could not be confirmed.
+- **Decision:** stop blocking the 29-story verification on the password. Engine B now introspects via
+  an RPC using the **service-role key** already used by Engine A. Direct/local DB access is
+  **deferred, not abandoned** (recorded in ADR-010) — revisit the shared pooler + confirmed password,
+  or the IPv4 add-on, if ad-hoc SQL is ever needed.
+
+### Changes
+- **New `supabase/introspection.sql`** — `get_schema_introspection()` `security definer` RPC returning
+  RLS flags, public views, users/profiles columns, and `created_at`/`updated_at` presence as JSON.
+  Grants: `service_role` + `authenticated` only (anon/public revoked). Run once in the SQL editor.
+- **`services/verify-schema.ts`** — `engineB()` rewritten to call `admin.rpc("get_schema_introspection")`;
+  the `postgres` driver import and `SUPABASE_DB_URL` branch removed. tsc clean.
+- **`npm run verify:rls` → 46 checks, 46 PASS, 0 FAIL.** Engine B now executes S02-rows/S04-rows
+  (RLS on all 9 user-data tables)/S26/S27/S29 for the first time.
+- **ADR-010 recorded** (accepted, 2026-09-11) — Engine B introspects via RPC, not a direct DB password.
+- `.env` `SUPABASE_DB_URL` line is now **optional/irrelevant** for verification — can be removed.
+
 ## 2026-09-05 — Design-system reconciliation + M2 data/auth hardening
 
 ### Design system reconciliation (source of truth = `designsystemtext.txt` v2.0)

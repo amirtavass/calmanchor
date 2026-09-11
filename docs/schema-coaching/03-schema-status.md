@@ -117,6 +117,36 @@ S29 (timestamps all user-data tables), and schema-only S10/S12/S13.
 **Auth/export changes recorded (not schema-test failures):** Google-only auth (S02) reconciled in code
 (`lib/auth.ts`); anonymisation function (S05/D13) added as `supabase/anonymise.sql` (run in SQL editor).
 
+## Session 2026-09-11 — Engine B via RPC; all tests verified, 46/46 PASS
+
+Engine B previously required a direct Postgres connection string (`SUPABASE_DB_URL`). Attempting to
+get one exposed: the legacy direct host is IPv6-only (unreachable), the IPv4 add-on is paid, and the
+shared-pooler password kept failing auth after several resets. **Decision (ADR-010):** introspection
+now runs through a `SECURITY DEFINER` RPC — `get_schema_introspection()` in `supabase/introspection.sql`
+— called by the verifier with the **service-role key**. `SUPABASE_DB_URL` is no longer required; direct
+DB connection is deferred for later, not abandoned.
+
+Ran `npm run verify:rls` against live Supabase. **46 checks, 46 PASS, 0 FAIL.**
+
+| Date | Story | Status | Evidence | Notes |
+|---|---|---|---|---|
+| 2026-09-11 | S04 | PASS | RLS enabled on all 9 user-data tables (checkins, journal_entries, exercise_sessions, checklist_progress, crisis_plan, settings, profiles, tags, users) | introspection RPC (`pg_tables.rowsecurity`) |
+| 2026-09-11 | S29 | PASS | `created_at` + `updated_at` on journal_entries, exercise_sessions, checkins, tags, profiles | introspection RPC (information_schema.columns) |
+| 2026-09-11 | S26 | PASS | no mood/trend/chart views in public schema | introspection RPC |
+| 2026-09-11 | S02 | PASS | no password-like columns in `users` (introspection authoritative) | introspection RPC |
+| 2026-09-11 | S27 | PASS | no identity/PII columns in `profiles` — research separation holds | introspection RPC |
+| 2026-09-11 | S17 | PASS | own sessions=34, newest-first, exercise join | persona data + lifecycle checks |
+| 2026-09-11 | S22 | PASS | delete one entry: before=35 after=34, others intact | lifecycle checks |
+| 2026-09-11 | S04 | PASS | user A count=1, rows with note='b' seen by A=0 | RLS isolation (2 throwaway users) |
+| 2026-09-11 | S05 | PASS | after user A delete: orphaned checkins for A=0 | cascade delete |
+| 2026-09-11 | — | PASS | full run: 46 checks, 46 PASS, 0 FAIL | `npm run verify:rls` |
+
+**All executable schema-coaching checks now PASS.** The remaining stories (S10/S12/S13) are
+schema-only/static design notes (sequence constraints, edit-window semantics) — no executable check
+exists for them in the query pack; they are satisfied by the schema design documented elsewhere.
+
+**Direct DB access:** deferred, not abandoned — see `docs/decisions/ADR-010-engine-b-rpc-introspection.md`.
+
 ## Open questions for Aamir
 
 (Anything the agent cannot resolve from the stories, the workbook, or the schema. The student brings these to supervision.)
