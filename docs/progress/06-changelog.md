@@ -2,6 +2,34 @@
 
 Append-only record of changes (decisions + progress). Newest first. Never edit or delete a past entry.
 
+## 2026-09-11 (2) — Material 3 foundation + tab shell + exercises screen (5-4-3-2-1)
+
+### MD3 foundation
+- **Installed `react-native-paper` ^5.15.3** (MD3 by default) + `react-native-vector-icons` + `@types/react-native-vector-icons` + `@react-native-community/slider`.
+- **`theme/md3.ts`** — MD3 theme bridge mapping `theme/tokens.ts` → `MD3Theme` (primary/secondary/tertiary ← tokens, surface variants ← offsets, onSurfaceVariant ← text-muted, outline ← border). `md3LightTheme`/`md3DarkTheme` exported.
+- **`app/_layout.tsx`** — `ThemeProvider` + `PaperProvider` (mode-aware) + StatusBar + Stack (tabs + exercise/diary/crisis/profile).
+
+### Tab shell (D14)
+- **`app/(tabs)/_layout.tsx`** — expo-router `Tabs` styled to MD3/tokens: Home · Toolkit · Exercises · Diary · Portfolio (labels + icons, active = primary).
+- **`components/CrisisFab.tsx`** — persistent Paper `FAB` (error-red, hand-heart icon) floating above the tab bar → full-screen crisis modal. Never gated.
+- **`components/ScreenHeader.tsx`** — title + avatar top-right → profile stack.
+- Moved `index`/`toolkit` into `(tabs)/`; added `(tabs)/exercises`, `(tabs)/diary`, `(tabs)/portfolio`; added `diary/`, `exercise/`, `crisis/`, `profile/` stacks.
+
+### Exercises (5-4-3-2-1) — from existing ASCII pack
+- **`(tabs)/exercises.tsx`** — Layout A category cards + Layout B "How are you feeling?" state filter (fight/flight/freeze/fawn/OK → suggested category + exercise rows). Null/error states + "no suggestions" edge.
+- **`exercise/category/[key].tsx`** — exercises in one category (title/steps/duration → Start).
+- **`exercise/[id].tsx`** — detail: category/steps/duration chips, "what this is"/"what to expect", Start (browse-first, sign-in only at save), null/error states.
+- **`exercise/session/[id].tsx`** — guided session (S12–S15/S18): distress-before slider → step 1..5 (progress bar, prev/next) → distress-after + helpfulness chips → review/confirm → `saveSession()` → saved. Cancel discards (no confirm). Skippable ratings, no fixed duration.
+
+### Verification
+- `tsc --noEmit` clean. `npx expo export --platform android` bundles successfully (4.1MB hbc).
+
+### Story cross-check (exercise screens vs S08–S18)
+- ✅ S08 (6 categories), S09 (steps in order), S10 (no forced order), S11 (crisis = normal category), S12 (session start), S13 (confirm before save), S14 (distress 0–10 pre/post, nullable), S15 (helpfulness 0–10), S18 (multi/day).
+- 🟡 **S16 (tags on sessions)** — tag picker not wired yet; join + `getSystemTags()`/`createUserTag()` ready.
+- 🟡 **S17 (session history)** — no history view yet; landing "Done today" is a placeholder.
+- S01 note: browse-first holds; Google sign-in is prompted by `saveSession()`'s internal `ensureSignedIn()` on the first save attempt.
+
 ## 2026-09-11 — Engine B via RPC; 46/46 PASS (direct-DB password attempt deferred)
 
 ### The `SUPABASE_DB_URL` attempt, and why it was parked

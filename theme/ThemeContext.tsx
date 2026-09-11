@@ -36,3 +36,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 export function useTheme() {
   return useContext(ThemeContext);
 }
+
+// Alias so components can read `const { mode } = useAppTheme()` (MD3 bridge uses it too).
+export const useAppTheme = useTheme;
