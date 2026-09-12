@@ -13,11 +13,8 @@ function RootNavigator() {
       <StatusBar style={mode === "dark" ? "light" : "dark"} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="exercise/[id]" options={{ presentation: "card" }} />
-        <Stack.Screen name="exercise/session/[id]" options={{ presentation: "card" }} />
-        <Stack.Screen name="exercise/category/[key]" options={{ presentation: "card" }} />
-        <Stack.Screen name="diary/new" options={{ presentation: "modal" }} />
-        <Stack.Screen name="diary/[id]" options={{ presentation: "card" }} />
+        <Stack.Screen name="exercise" options={{ headerShown: false }} />
+        <Stack.Screen name="diary" options={{ headerShown: false }} />
         <Stack.Screen name="crisis/index" options={{ presentation: "fullScreenModal" }} />
         <Stack.Screen name="profile/index" options={{ presentation: "card" }} />
       </Stack>

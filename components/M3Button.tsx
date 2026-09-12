@@ -1,20 +1,24 @@
 import { useState } from "react";
+import type { ComponentProps } from "react";
 import { StyleSheet, View } from "react-native";
 import { Text, TouchableRipple } from "react-native-paper";
-import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useAppTheme } from "../theme/ThemeContext";
 import { colors } from "../theme/tokens";
 
 /**
- * M3 Filled button — hand-built to m3.material.io/components/buttons/specs.
+ * M3 Button — hand-built to m3.material.io/components/buttons/specs.
  *
- * Spec (filled):
- *   container height 40dp · fully rounded (radius = 20dp) · label label-large (14/20/500)
- *   padding 16dp left/right · optional leading icon 20dp
- *   colours: container `primary`, label/icon `onPrimary`; pressed state layer = 12% onPrimary
- *   elevation 0
+ * Spec (filled): container height 40dp · fully rounded (radius 20dp) · label label-large
+ * (14/20/500) · padding 16dp · optional leading icon 20dp · elevation 0.
+ * Pressed state layer = 12% of the content colour. Paper is used only for the press
+ * ripple (TouchableRipple) + accessibility.
  *
- * Paper is used only for the press ripple (TouchableRipple) + accessibility.
+ * Variants:
+ *   filled   — container `primary`, label `onPrimary`
+ *   outlined — transparent container, `primary` label + 1dp `primary` stroke;
+ *              `selected` flips it to filled
+ *   text     — transparent, `primary` label (used for "Skip" / text actions)
  */
 export default function M3Button({
   label,
@@ -22,19 +26,38 @@ export default function M3Button({
   icon,
   disabled,
   style,
+  variant = "filled",
+  selected,
 }: {
   label: string;
   onPress: () => void;
-  icon?: string;
+  icon?: ComponentProps<typeof MaterialCommunityIcons>["name"];
   disabled?: boolean;
   style?: object;
+  variant?: "filled" | "outlined" | "text";
+  selected?: boolean;
 }) {
   const { mode } = useAppTheme();
   const c = colors[mode];
   const [pressed, setPressed] = useState(false);
 
-  const containerColor = disabled ? c.surfaceOffset : c.primary;
-  const contentColor = disabled ? c.textFaint : c.textInverse;
+  let containerColor = c.surfaceOffset2; // disabled
+  let contentColor = c.textMuted; // disabled
+  let borderColor: string | undefined;
+
+  if (!disabled) {
+    if (variant === "filled" || (variant === "outlined" && selected)) {
+      containerColor = c.primary;
+      contentColor = c.textInverse;
+    } else if (variant === "outlined") {
+      containerColor = "transparent";
+      contentColor = c.primary;
+      borderColor = c.primary;
+    } else {
+      containerColor = "transparent";
+      contentColor = c.primary;
+    }
+  }
 
   return (
     <TouchableRipple
@@ -43,19 +66,21 @@ export default function M3Button({
       onPressOut={() => setPressed(false)}
       disabled={disabled}
       accessibilityRole="button"
-      accessibilityState={{ disabled: !!disabled }}
+      accessibilityState={{ disabled: !!disabled, selected: !!selected }}
       accessibilityLabel={label}
-      style={[styles.wrap, style]}
+      style={[
+        styles.wrap,
+        variant === "outlined" ? { borderWidth: 1, borderColor } : null,
+        style,
+      ]}
     >
       <View style={[styles.btn, { backgroundColor: containerColor }]}>
-        {icon ? (
-          <MaterialCommunityIcons name={icon} size={20} color={contentColor} />
-        ) : null}
+        {icon ? <MaterialCommunityIcons name={icon} size={20} color={contentColor} /> : null}
         <Text style={[styles.label, { color: contentColor }]}>{label}</Text>
         {pressed && !disabled ? (
           <View
             pointerEvents="none"
-            style={[StyleSheet.absoluteFill, { backgroundColor: `${c.textInverse}1F`, borderRadius: 20 }]}
+            style={[StyleSheet.absoluteFill, { backgroundColor: `${contentColor}1F`, borderRadius: 20 }]}
           />
         ) : null}
       </View>

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Animated, StyleSheet } from "react-native";
 import { TouchableRipple } from "react-native-paper";
-import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useAppTheme } from "../theme/ThemeContext";
 import { colors } from "../theme/tokens";
 
@@ -12,9 +12,12 @@ import { colors } from "../theme/tokens";
  *   container height 32dp · corner radius 8dp · icon 18dp
  *   label: label-large (14/20, weight 500), start-aligned
  *   padding: 16dp sides without icon, 8dp with icon, 8dp between elements
- *   colours: unselected = surface + outline-variant stroke, on-surface-variant label;
- *            selected = secondary-container fill, leading checkmark, on-secondary-container
- *   toggle: selecting fills the chip (Material Symbols "check" on the start edge)
+ *   toggle: selecting fills the chip + leading 18dp checkmark.
+ *
+ * Default colours: unselected = `surface` + `divider` stroke, `textMuted` label;
+ * selected = `secondarySubtle` fill, `text` label. `selectedBg` / `selectedColor`
+ * override the selected fill/label so a caller can use the survival-response
+ * palette (--sr-*) on the state filter (04-landing D2).
  *
  * Paper is used only for the press ripple (TouchableRipple) + accessibility.
  */
@@ -22,13 +25,19 @@ export default function M3Chip({
   label,
   selected,
   onPress,
+  selectedBg,
+  selectedColor,
 }: {
   label: string;
   selected: boolean;
   onPress: () => void;
+  selectedBg?: string;
+  selectedColor?: string;
 }) {
   const { mode } = useAppTheme();
   const c = colors[mode];
+  const fill = selectedBg ?? c.secondarySubtle;
+  const labelSel = selectedColor ?? c.text;
   const prog = useRef(new Animated.Value(selected ? 1 : 0)).current;
 
   useEffect(() => {
@@ -41,15 +50,15 @@ export default function M3Chip({
 
   const bg = prog.interpolate({
     inputRange: [0, 1],
-    outputRange: [c.surface, c.secondarySubtle],
+    outputRange: [c.surface, fill],
   });
   const border = prog.interpolate({
     inputRange: [0, 1],
-    outputRange: [c.divider, c.secondarySubtle],
+    outputRange: [c.divider, fill],
   });
   const labelColor = prog.interpolate({
     inputRange: [0, 1],
-    outputRange: [c.textMuted, c.text],
+    outputRange: [c.textMuted, labelSel],
   });
   const iconWidth = prog.interpolate({ inputRange: [0, 1], outputRange: [0, 18] });
   const iconGap = prog.interpolate({ inputRange: [0, 1], outputRange: [0, 8] });
@@ -71,7 +80,7 @@ export default function M3Chip({
           style={{ opacity: iconOpacity, width: iconWidth, marginRight: iconGap, alignItems: "center" }}
           pointerEvents="none"
         >
-          <MaterialCommunityIcons name="check" size={18} color={c.text} />
+          <MaterialCommunityIcons name="check" size={18} color={labelSel} />
         </Animated.View>
         <Animated.Text style={[styles.label, { color: labelColor }]}>{label}</Animated.Text>
       </Animated.View>

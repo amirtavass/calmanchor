@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { Text } from "react-native-paper";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useRouter } from "expo-router";
 import ScreenHeader from "../../components/ScreenHeader";
 import M3Chip from "../../components/M3Chip";
 import M3Button from "../../components/M3Button";
 import M3Card from "../../components/M3Card";
-import { getAllExercises } from "../../lib/db";
+import { getAllExercises, getSessions } from "../../lib/db";
 import {
   CATEGORIES,
   CATEGORY_TOKENS,
@@ -17,11 +18,10 @@ import { useAppTheme } from "../../theme/ThemeContext";
 import { colors } from "../../theme/tokens";
 
 /**
- * Exercises landing — Layout A (category cards, design-system colours + emoji per
- * category) with Layout B's "How are you feeling?" filter (01-landing-variants.md).
- * M3 component usage per docs/ui/sections/exercises/00-m3-design-ledger.md:
- *   small app bar · filter chips (bare row) · filled cards w/ --ex-* accent ·
- *   brand section titles · two-line list + filled buttons for quick start.
+ * Exercises landing — 04-landing D2 "Colour fields".
+ * Category tiles are blocks of their own --ex-*-bg colour; the state filter chips
+ * speak the survival-response palette (--sr-*). Icons are MaterialCommunityIcons
+ * (rules §2.1). A quiet "Done today" row reflects completion (03-session-flow §6).
  */
 export default function ExercisesScreen() {
   const router = useRouter();
@@ -32,6 +32,7 @@ export default function ExercisesScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stateFilter, setStateFilter] = useState<string | null>(null);
+  const [recentSession, setRecentSession] = useState<SessionRow | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -42,6 +43,17 @@ export default function ExercisesScreen() {
         setError(e instanceof Error ? e.message : String(e));
       } finally {
         setLoading(false);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const s = await getSessions();
+        if (s && s.length) setRecentSession(s[0]);
+      } catch {
+        // Not signed in (or offline) — the done-today row simply stays hidden.
       }
     })();
   }, []);
@@ -62,88 +74,128 @@ export default function ExercisesScreen() {
       ? exercises.filter((e) => e.category === stateToCategory[stateFilter])
       : [];
 
+  // Survival-response tint for each state chip (04-landing D2 / design-system §4).
+  const STATE_TONES: Record<string, { bg: keyof typeof colors.light; fg: keyof typeof colors.light }> = {
+    fight: { bg: "srFightBg", fg: "srFight" },
+    flight: { bg: "srFlightBg", fg: "srFlight" },
+    freeze: { bg: "srFreezeBg", fg: "srFreeze" },
+    fawn: { bg: "srFawnBg", fg: "srFawn" },
+    regulated: { bg: "nsWindowBg", fg: "nsWindow" },
+  };
+  const stateChip = (label: string, key: string) => {
+    const t = STATE_TONES[key];
+    return (
+      <M3Chip
+        label={label}
+        selected={stateFilter === key}
+        onPress={() => setStateFilter(stateFilter === key ? null : key)}
+        selectedBg={c[t.bg]}
+        selectedColor={c[t.fg]}
+      />
+    );
+  };
+
   // Quick start: the app's go-to exercises (design "Favourites (quick start)").
-  const QUICK_TITLES = ["Gentle Inhale & Exhale", "Humming"];
+  const QUICK_TITLES = ["5-4-3-2-1 Grounding", "Gentle Inhale & Exhale"];
   const quickStart = exercises.filter((e) => QUICK_TITLES.includes(e.title));
 
-  const mutedStyle = { color: c.textMuted, opacity: 0.85 };
+  const categoryIcon = (key: string) =>
+    CATEGORIES.find((cat) => cat.key === key)?.icon ?? "meditation";
   const categoryLabel = (key: string) =>
     CATEGORIES.find((cat) => cat.key === key)?.label ?? key;
+  const categoryTone = (key: string) => {
+    const t = CATEGORY_TOKENS[key as ExerciseCategory] ?? CATEGORY_TOKENS.breathing;
+    return { fg: c[t.fg], bg: c[t.bg] };
+  };
 
-  // M3 two-line list row (lists/specs): label body-large, supporting body-medium,
-  // trailing filled button.
-  const ExerciseRow = ({ ex, star }: { ex: Exercise; star?: boolean }) => (
-    <View style={styles.listRow}>
-      {star ? <Text style={[styles.star, { color: c.warmGold }]}>★</Text> : null}
-      <View style={styles.listText}>
-        <Text style={[styles.listLabel, { color: c.text }]}>{ex.title}</Text>
-        <Text style={[styles.listSupporting, { color: c.textMuted }]}>
-          {categoryLabel(ex.category)} · {ex.steps.length} steps
-          {ex.duration_minutes ? ` · ~${ex.duration_minutes} min` : " · no fixed time"}
-        </Text>
-      </View>
-      <M3Button label="Start" onPress={() => router.push(`/exercise/${ex.id}`)} />
-    </View>
-  );
+  const timeLabel = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  };
 
-  const States = () => (
-    <>
-      <Text style={styles.sectionTitle}>How are you feeling?</Text>
-      <View style={styles.chips}>
-        <M3Chip
-          label="Fight"
-          selected={stateFilter === "fight"}
-          onPress={() => setStateFilter(stateFilter === "fight" ? null : "fight")}
-        />
-        <M3Chip
-          label="Flight"
-          selected={stateFilter === "flight"}
-          onPress={() => setStateFilter(stateFilter === "flight" ? null : "flight")}
-        />
-        <M3Chip
-          label="Freeze"
-          selected={stateFilter === "freeze"}
-          onPress={() => setStateFilter(stateFilter === "freeze" ? null : "freeze")}
-        />
-        <M3Chip
-          label="Fawn"
-          selected={stateFilter === "fawn"}
-          onPress={() => setStateFilter(stateFilter === "fawn" ? null : "fawn")}
-        />
-        <M3Chip
-          label="OK / regulated"
-          selected={stateFilter === "regulated"}
-          onPress={() => setStateFilter(stateFilter === "regulated" ? null : "regulated")}
-        />
+  // M3 two-line list row (lists/specs) + trailing filled button.
+  const ExerciseRow = ({ ex, star }: { ex: Exercise; star?: boolean }) => {
+    const tone = categoryTone(ex.category);
+    return (
+      <View style={styles.listRow}>
+        <View style={[styles.leadIcon, { backgroundColor: tone.bg }]}>
+          <MaterialCommunityIcons name={categoryIcon(ex.category)} size={22} color={tone.fg} />
+        </View>
+        <View style={styles.listText}>
+          <View style={styles.listTitleLine}>
+            {star ? <Text style={[styles.star, { color: c.warmGold }]}>★</Text> : null}
+            <Text style={[styles.listLabel, { color: c.text }]}>{ex.title}</Text>
+          </View>
+          <Text style={[styles.listSupporting, { color: c.textMuted }]}>
+            {categoryLabel(ex.category)} · {ex.steps.length} steps
+            {ex.duration_minutes ? ` · ~${ex.duration_minutes} min` : " · no fixed time"}
+          </Text>
+        </View>
+        <M3Button label="Start" onPress={() => router.push(`/exercise/${ex.id}`)} />
       </View>
-    </>
-  );
+    );
+  };
 
   return (
     <View style={[styles.root, { backgroundColor: c.bg }]}>
       <ScreenHeader title="Exercises" subtitle="What might help right now" />
       <ScrollView contentContainerStyle={styles.body}>
         {loading ? (
-          <Text style={mutedStyle}>Loading exercises…</Text>
+          <Text style={muted(c)}>Loading exercises…</Text>
         ) : error ? (
           <View style={styles.errorBox}>
-            <Text style={[mutedStyle, { color: c.error }]}>
+            <Text style={[muted(c), { color: c.error }]}>
               Couldn't load exercises. {error}
             </Text>
             <M3Button label="Retry" onPress={() => setError(null)} style={styles.retry} />
           </View>
         ) : (
           <>
-            <States />
+            <Text style={styles.sectionTitle}>How are you feeling?</Text>
+            <View style={styles.chips}>
+              {stateChip("Fight", "fight")}
+              {stateChip("Flight", "flight")}
+              {stateChip("Freeze", "freeze")}
+              {stateChip("Fawn", "fawn")}
+              {stateChip("OK / regulated", "regulated")}
+            </View>
+
+            {recentSession && recentSession.exercises && recentSession.exercise_id ? (
+              <View
+                style={[
+                  styles.doneCard,
+                  { backgroundColor: c.successTint, borderColor: c.successSubtle },
+                ]}
+              >
+                <Text style={[styles.doneTitle, { color: c.success }]}>Done today</Text>
+                <View style={styles.listRow}>
+                  <View style={styles.listText}>
+                    <Text style={[styles.listLabel, { color: c.text }]}>
+                      {recentSession.exercises.title}
+                    </Text>
+                    <Text style={[styles.listSupporting, { color: c.textMuted }]}>
+                      {timeLabel(recentSession.started_at)}
+                      {recentSession.helpfulness != null
+                        ? ` · helped ${recentSession.helpfulness}/10`
+                        : ""}
+                    </Text>
+                  </View>
+                  <M3Button
+                    label="Do again"
+                    onPress={() => router.push(`/exercise/session/${recentSession.exercise_id}`)}
+                  />
+                </View>
+              </View>
+            ) : null}
 
             {stateFilter ? (
               <>
                 <Text style={styles.sectionTitle}>Suggested for {stateFilter}</Text>
-                <Text style={[styles.sectionSub, mutedStyle]}>
+                <Text style={[styles.sectionSub, muted(c)]}>
                   Ideas only — skip or browse below if they don't fit.
                 </Text>
                 {filtered.length === 0 ? (
-                  <Text style={mutedStyle}>
+                  <Text style={muted(c)}>
                     No suggestions yet for this state — browse all categories below.
                   </Text>
                 ) : (
@@ -163,19 +215,16 @@ export default function ExercisesScreen() {
               <>
                 <View style={styles.grid}>
                   {CATEGORIES.map((cat) => {
-                    const tokens = CATEGORY_TOKENS[cat.key];
-                    const fg = c[tokens.fg];
+                    const tone = categoryTone(cat.key);
                     return (
                       <View key={cat.key} style={styles.tile}>
                         <M3Card
-                          accentColor={fg}
+                          fill={tone.bg}
                           onPress={() => router.push(`/exercise/category/${cat.key}`)}
                         >
-                          <Text style={styles.tileEmoji}>{cat.emoji}</Text>
-                          <Text style={[styles.tileLabel, { color: c.text }]}>
-                            {cat.label}
-                          </Text>
-                          <Text style={[styles.tileCount, { color: c.textMuted }]}>
+                          <MaterialCommunityIcons name={cat.icon} size={28} color={tone.fg} />
+                          <Text style={[styles.tileLabel, { color: tone.fg }]}>{cat.label}</Text>
+                          <Text style={[styles.tileCount, { color: tone.fg }]}>
                             {counts[cat.key] ?? 0} exercises
                           </Text>
                         </M3Card>
@@ -187,7 +236,7 @@ export default function ExercisesScreen() {
                 {quickStart.length > 0 ? (
                   <>
                     <Text style={styles.sectionTitle}>Quick start</Text>
-                    <Text style={[styles.sectionSub, mutedStyle]}>
+                    <Text style={[styles.sectionSub, muted(c)]}>
                       Your go-to exercises — one tap away.
                     </Text>
                     {quickStart.map((ex) => (
@@ -204,15 +253,24 @@ export default function ExercisesScreen() {
   );
 }
 
+interface SessionRow {
+  id: string;
+  exercise_id: string | null;
+  started_at: string;
+  helpfulness: number | null;
+  exercises: { title: string; category: string } | null;
+}
+
+const muted = (c: typeof colors.light) => ({ color: c.textMuted, opacity: 0.85 });
+
 const styles = StyleSheet.create({
   root: { flex: 1 },
   body: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 96 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 4 },
   tile: { width: "48%", flexGrow: 1 },
-  tileEmoji: { fontSize: 34, lineHeight: 40 },
-  tileLabel: { marginTop: 6, fontSize: 16, lineHeight: 24, fontWeight: "700" },
-  tileCount: { marginTop: 2, fontSize: 12, lineHeight: 16, opacity: 0.85 },
+  tileLabel: { marginTop: 8, fontSize: 16, lineHeight: 24, fontWeight: "700" },
+  tileCount: { marginTop: 2, fontSize: 12, lineHeight: 16, opacity: 0.75 },
   sectionTitle: {
     marginTop: 24,
     marginBottom: 8,
@@ -221,13 +279,28 @@ const styles = StyleSheet.create({
     letterSpacing: -0.02,
   },
   sectionSub: { marginBottom: 16, fontSize: 14, lineHeight: 20 },
+  doneCard: {
+    marginTop: 16,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  doneTitle: { fontSize: 13, fontWeight: "700", marginBottom: 4 },
   listRow: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 12,
     gap: 12,
   },
+  leadIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   listText: { flex: 1 },
+  listTitleLine: { flexDirection: "row", alignItems: "center", gap: 6 },
   listLabel: { fontSize: 16, lineHeight: 24, fontWeight: "400" },
   listSupporting: { marginTop: 2, fontSize: 14, lineHeight: 20, opacity: 0.85 },
   star: { fontSize: 18 },

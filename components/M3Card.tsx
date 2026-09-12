@@ -10,8 +10,8 @@ import { colors } from "../theme/tokens";
  *   corner radius 12dp · padding 16dp l/r · gap between cards 8dp max
  *   filled card container colour = `surface-container-highest` (maps to surfaceOffset2)
  *
- * Optional `accentColor` renders a thin top bar in the category's `--ex-*` colour so
- * the Exercises tiles stay colour-coded per the design system.
+ * Optional `fill` overrides the container colour (e.g. a category's `--ex-*-bg` tint for
+ * the colour-field tiles in 04-landing D2). Optional `accentColor` renders a thin top bar.
  *
  * Paper is used only for the press ripple (TouchableRipple).
  */
@@ -19,18 +19,20 @@ export default function M3Card({
   children,
   onPress,
   accentColor,
+  fill,
   style,
 }: {
   children: React.ReactNode;
   onPress?: () => void;
   accentColor?: string;
+  fill?: string;
   style?: object;
 }) {
   const { mode } = useAppTheme();
   const c = colors[mode];
 
   const card = (
-    <View style={[styles.card, { backgroundColor: c.surfaceOffset2 }, style]}>
+    <View style={[styles.card, { backgroundColor: fill ?? c.surfaceOffset2 }, style]}>
       {accentColor ? <View style={[styles.accent, { backgroundColor: accentColor }]} /> : null}
       <View style={styles.content}>{children}</View>
     </View>

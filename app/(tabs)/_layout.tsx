@@ -55,8 +55,8 @@ export default function TabsLayout() {
 }
 
 // Small icon helper to avoid pulling in a full icon-font mapping in the layout.
-// Uses the MaterialIcons glyph set shipped with react-native-vector-icons.
-import Ionicons from "react-native-vector-icons/Ionicons";
+// Uses the MaterialIcons glyph set shipped with @expo/vector-icons.
+import Ionicons from "@expo/vector-icons/Ionicons";
 import type { ColorValue } from "react-native";
 function IonIcon({ name, color, size }: { name: string; color: ColorValue; size: number }) {
   return <Ionicons name={name as any} color={color as string} size={size} />;

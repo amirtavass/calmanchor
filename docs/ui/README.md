@@ -15,6 +15,7 @@ as a build checklist.
 
 | File | Concern |
 |---|---|
+| [`00-design-system-usage-rules.md`](00-design-system-usage-rules.md) | Standing rules for using `design-system/*` as a visual reference: reference hierarchy, anti-patterns (emoji-as-icon-system, flat/no-state-layer components), and how to flag a borrow that revises a locked decision. |
 | [`01-navigation-and-ia.md`](01-navigation-and-ia.md) | Navigation shell + information architecture: 5-tab structure, route tree, screen anatomy, Crisis FAB spec, dashboard wireframe. The foundation for all other flows. |
 
 ## Planned
