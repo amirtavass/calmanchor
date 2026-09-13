@@ -75,22 +75,28 @@ export default function ExercisesScreen() {
       : [];
 
   // Survival-response tint for each state chip (04-landing D2 / design-system §4).
-  const STATE_TONES: Record<string, { bg: keyof typeof colors.light; fg: keyof typeof colors.light }> = {
-    fight: { bg: "srFightBg", fg: "srFight" },
-    flight: { bg: "srFlightBg", fg: "srFlight" },
-    freeze: { bg: "srFreezeBg", fg: "srFreeze" },
-    fawn: { bg: "srFawnBg", fg: "srFawn" },
-    regulated: { bg: "nsWindowBg", fg: "nsWindow" },
+  // Design-system pill idiom (.ex-chip/.mpill): --sr-*-bg fill, --sr-* stroke,
+  // --sr-* icon + label; selected = solid --sr-* fill. The icon carries the
+  // state's meaning so colour is never the only differentiator (fight vs flight).
+  const STATE_TONES: Record<
+    string,
+    { bg: keyof typeof colors.light; fg: keyof typeof colors.light; icon: "flash" | "run" | "snowflake" | "handshake" | "leaf" }
+  > = {
+    fight: { bg: "srFightBg", fg: "srFight", icon: "flash" },
+    flight: { bg: "srFlightBg", fg: "srFlight", icon: "run" },
+    freeze: { bg: "srFreezeBg", fg: "srFreeze", icon: "snowflake" },
+    fawn: { bg: "srFawnBg", fg: "srFawn", icon: "handshake" },
+    regulated: { bg: "nsWindowBg", fg: "nsWindow", icon: "leaf" },
   };
   const stateChip = (label: string, key: string) => {
     const t = STATE_TONES[key];
     return (
       <M3Chip
         label={label}
+        icon={t.icon}
+        tint={{ bg: c[t.bg], fg: c[t.fg] }}
         selected={stateFilter === key}
         onPress={() => setStateFilter(stateFilter === key ? null : key)}
-        selectedBg={c[t.bg]}
-        selectedColor={c[t.fg]}
       />
     );
   };
@@ -152,13 +158,18 @@ export default function ExercisesScreen() {
         ) : (
           <>
             <Text style={styles.sectionTitle}>How are you feeling?</Text>
-            <View style={styles.chips}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chips}
+              style={styles.chipsScroll}
+            >
               {stateChip("Fight", "fight")}
               {stateChip("Flight", "flight")}
               {stateChip("Freeze", "freeze")}
               {stateChip("Fawn", "fawn")}
               {stateChip("OK / regulated", "regulated")}
-            </View>
+            </ScrollView>
 
             {recentSession && recentSession.exercises && recentSession.exercise_id ? (
               <View
@@ -266,7 +277,8 @@ const muted = (c: typeof colors.light) => ({ color: c.textMuted, opacity: 0.85 }
 const styles = StyleSheet.create({
   root: { flex: 1 },
   body: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 96 },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 },
+  chipsScroll: { marginHorizontal: -16, paddingHorizontal: 16, marginBottom: 8 },
+  chips: { flexDirection: "row", gap: 8, paddingRight: 16 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 4 },
   tile: { width: "48%", flexGrow: 1 },
   tileLabel: { marginTop: 8, fontSize: 16, lineHeight: 24, fontWeight: "700" },

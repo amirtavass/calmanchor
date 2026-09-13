@@ -176,24 +176,31 @@ Full route→file→data-call map in `02-routing-map.md`.
 
 ## 5. The Shell — Screen Anatomy (every tab)
 
+> Craft details (exact insets, padding, typography, colour roles, pinned action bar) live in
+> **`03-screen-craft.md`** — that file wins on layout questions; this section defines the shell itself.
+
 ```
 ┌───────────────────────────────────────────────────────────────┐
 │  ▲ StatusBar (expo-status-bar, style="auto")                  │
 │  ┌─────────────────────────────────────────────────────────┐ │
-│  │  HEADER (app-topbar)                 [surface]           │ │
+│  │  HEADER (app-topbar)   paddingTop: insets.top + 8        │ │
 │  │  Title (app-title)          ...   (🕶 avatar → /profile) │ │
 │  └─────────────────────────────────────────────────────────┘ │
 │                                                               │
 │  ┌─────────────────────────────────────────────────────────┐ │
-│  │  BODY (app-body) — flex:1, scrollable                 │ │
+│  │  BODY (app-body) — flex:1, scrollable, padding 16       │ │
 │  │                                                        │ │
 │  │     <ScreenContent/>  ← per-screen 3–5 actions         │ │
 │  │     (check-in card / pdf / ex-cards / prompts / ...)   │ │
 │  │                                                        │ │
-│  │  ...bottom padding = 80 so the FAB never covers        │ │
-│  │     the last item                                      │ │
+│  │  ...bottom padding = 96 so the FAB + tab bar never      │ │
+│  │     cover the last item                                 │ │
 │  └─────────────────────────────────────────────────────────┘ │
-│                                                               │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │  (pushed screens only) PINNED ACTION BAR                │ │
+│  │  [ secondary flex 1 ]  [ primary flex 1.3 ]             │ │
+│  │  paddingBottom: insets.bottom + 14                      │ │
+│  └─────────────────────────────────────────────────────────┘ │
 │  ┌─────────────────────────────────────────────────────────┐ │
 │  │  TAB BAR (bottom-nav)            [surface]               │ │
 │  │                                                         │ │
@@ -214,11 +221,15 @@ Full route→file→data-call map in `02-routing-map.md`.
 | ------------- | --------------------------------------------------------------------------------- |
 | Header        | `.app-topbar`, `.app-title`, `.app-sub` — `--color-surface`, `--color-text`        |
 | Body          | `.app-body` — `--color-bg`, spacing `--sp-*`                                       |
+| Action bar    | pinned, `--color-bg`, hairline top border in `divider`, `insets.bottom + 14`        |
 | Tab bar       | `.bottom-nav`, `.nav-item`, `.nav-icon`, `.is-active` — active=`--color-primary` |
 | Crisis FAB    | `.fab` — fixed, 56×56, `--radius-full`, `--shadow-lg`                             |
 
 **Active-tab rule:** exactly one `.nav-item` has `.is-active` → `--color-primary` text+icon, weight 700.
 **Header avatar rule:** top-right on every tab → `profile/` stack (low-frequency actions, never a tab).
+**Safe-area rule:** every header reads `useSafeAreaInsets()`; nothing sits flush to the status bar.
+**Pushed screens** don't use `ScreenHeader` — they use a tinted hero (entity screens) or a quiet
+inset-aware header (flow steps). See `03-screen-craft.md` §10.
 
 ---
 

@@ -17,25 +17,29 @@ import { colors } from "../theme/tokens";
  * Variants:
  *   filled   — container `primary`, label `onPrimary`
  *   outlined — transparent container, `primary` label + 1dp `primary` stroke;
- *              `selected` flips it to filled
+ *              `selected` flips it to filled; `color` overrides the accent
  *   text     — transparent, `primary` label (used for "Skip" / text actions)
  */
 export default function M3Button({
   label,
   onPress,
   icon,
+  iconRight,
   disabled,
   style,
   variant = "filled",
   selected,
+  color,
 }: {
   label: string;
   onPress: () => void;
   icon?: ComponentProps<typeof MaterialCommunityIcons>["name"];
+  iconRight?: boolean;
   disabled?: boolean;
   style?: object;
   variant?: "filled" | "outlined" | "text";
   selected?: boolean;
+  color?: string;
 }) {
   const { mode } = useAppTheme();
   const c = colors[mode];
@@ -47,16 +51,21 @@ export default function M3Button({
 
   if (!disabled) {
     if (variant === "filled" || (variant === "outlined" && selected)) {
-      containerColor = c.primary;
+      containerColor = color ?? c.primary;
       contentColor = c.textInverse;
     } else if (variant === "outlined") {
       containerColor = "transparent";
-      contentColor = c.primary;
-      borderColor = c.primary;
+      contentColor = color ?? c.primary;
+      borderColor = color ?? c.primary;
     } else {
       containerColor = "transparent";
-      contentColor = c.primary;
+      contentColor = color ?? c.primary;
     }
+  } else if (variant === "outlined") {
+    containerColor = "transparent";
+    borderColor = c.divider;
+  } else if (variant === "text") {
+    containerColor = "transparent";
   }
 
   return (
@@ -75,8 +84,13 @@ export default function M3Button({
       ]}
     >
       <View style={[styles.btn, { backgroundColor: containerColor }]}>
-        {icon ? <MaterialCommunityIcons name={icon} size={20} color={contentColor} /> : null}
+        {icon && !iconRight ? (
+          <MaterialCommunityIcons name={icon} size={20} color={contentColor} />
+        ) : null}
         <Text style={[styles.label, { color: contentColor }]}>{label}</Text>
+        {icon && iconRight ? (
+          <MaterialCommunityIcons name={icon} size={20} color={contentColor} />
+        ) : null}
         {pressed && !disabled ? (
           <View
             pointerEvents="none"

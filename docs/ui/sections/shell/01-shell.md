@@ -21,7 +21,7 @@
 │  │                                                         │ │
 │  │       <ScreenContent/>   ← per-screen 3–5 actions       │ │
 │  │                                                         │ │
-│  │       · bottom padding = 80 so FAB never covers the     │ │
+│  │       · bottom padding = 96 so FAB + tab bar never cover the     │ │
 │  │         last item                                       │ │
 │  └─────────────────────────────────────────────────────────┘ │
 │                                                               │
@@ -45,7 +45,12 @@
 (56×56, `--radius-full`, `--shadow-lg`, `--color-error`).
 
 **Rules:** exactly one active tab · header avatar on every tab → `profile/*` · Crisis FAB never hidden,
-never gated, no confirmation.
+never gated, no confirmation · header reads `useSafeAreaInsets()` (`paddingTop: insets.top + 8`) so nothing
+sits flush to the status bar · tab-screen body = `paddingHorizontal: 16`, `paddingBottom: 96`.
+
+> **Craft details** (exact insets, typography scale, colour roles, pinned action bars, states, motion) are in
+> **`docs/ui/03-screen-craft.md`**; reusable components in **`docs/ui/04-component-library.md`**. Pushed
+> (non-tab) screens don't use `ScreenHeader` — they use a tinted hero or a quiet inset header (craft §10).
 
 ---
 

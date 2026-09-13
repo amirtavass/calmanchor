@@ -3,6 +3,7 @@ import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { Text } from "react-native-paper";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import M3Button from "../../../components/M3Button";
 import M3Card from "../../../components/M3Card";
 import { getExercisesByCategory } from "../../../lib/db";
@@ -17,6 +18,7 @@ import { colors } from "../../../theme/tokens";
 export default function CategoryScreen() {
   const { key } = useLocalSearchParams<{ key: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { mode } = useAppTheme();
   const c = colors[mode];
   const catKey = (key as ExerciseCategory) in CATEGORY_TOKENS ? (key as ExerciseCategory) : "breathing";
@@ -45,14 +47,27 @@ export default function CategoryScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: c.bg }]}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.back} accessibilityRole="button">
-          <MaterialCommunityIcons name="arrow-left" size={24} color={c.text} />
+      <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
+        <Pressable
+          onPress={() => router.back()}
+          style={styles.back}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
+          <View style={[styles.backBtn, { backgroundColor: c.surfaceOffset }]}>
+            <MaterialCommunityIcons name="arrow-left" size={22} color={c.text} />
+          </View>
         </Pressable>
-        <Text variant="titleLarge" style={{ fontWeight: "700", color: c.text }}>
-          {label}
-        </Text>
-        <View style={{ width: 40 }} />
+        <View style={styles.headerText}>
+          <Text variant="titleLarge" style={{ fontWeight: "700", color: c.text }}>
+            {label}
+          </Text>
+          <Text variant="bodySmall" style={muted(c)}>
+            {loading ? "Loading…" : `${items.length} exercise${items.length === 1 ? "" : "s"}`}
+          </Text>
+        </View>
+        <View style={{ width: 44 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.body}>
@@ -102,12 +117,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 8,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
-  back: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
-  body: { padding: 16, paddingBottom: 48 },
-  card: { marginBottom: 8 },
+  back: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  backBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerText: { flex: 1, marginLeft: 4 },
+  body: { padding: 16, paddingTop: 8, paddingBottom: 48 },
+  card: { marginBottom: 10 },
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
   text: { flex: 1 },
   errorBox: { paddingVertical: 24, alignItems: "center" },

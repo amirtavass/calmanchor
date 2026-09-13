@@ -3,9 +3,11 @@
 > **Status:** Standing reference — applies to EVERY screen, every milestone. Re-read before designing any
 > screen, do not re-derive per task.
 > **Source:** project-lead directive on `design-system/calm-anchor-design-system.{html,css,js}` v2.0.
-> **Sibling docs:** `docs/ui/01-navigation-and-ia.md` (IA + shell), `docs/ui/sections/*` (per-screen designs).
+> **Sibling docs (all standing):** `03-screen-craft.md` (layout, spacing, typography, colour, motion,
+> controls — the shipped Exercises screens are the canonical examples), `04-component-library.md` (what to
+> reuse before building), `01-navigation-and-ia.md` (IA + shell), `sections/*` (per-screen designs).
 > **Rule of thumb:** if this file and a screen file disagree, this file wins; if `/docs` and the
-> design-system disagree, `/docs` wins.
+> design-system disagree, `/docs` wins; for layout/craft questions, `03-screen-craft.md` wins.
 
 ---
 
@@ -58,6 +60,24 @@ no-state-layer patterns.
   component per M3 spec** — state layers (8%/12% overlays), tonal surfaces, ripple/elevation, spec'd dp values.
 - Colour application is a mapping exercise (design-system token → M3 colour role), never a copy of the CSS shape.
 
+### 2.3 Bare text and default browser spacing
+The design-system's HTML leans on plain paragraphs, `·` bullet runs and margin-only hierarchy. Carried into
+the app that reads as unfinished ("not engaging", "simple font styling" — review finding R1).
+
+- **Every copy block gets a structure:** panel, tinted statement card, icon-led list, reassurance row, quote
+  block or meta pill — see `03-screen-craft.md` §5 for the six approved structures and the banned patterns.
+- **Spacing is deliberate, not default:** safe-area-aware headers, 20dp content padding, a pinned action bar,
+  and the vertical rhythm in `03-screen-craft.md` §2.
+- **Weight contrast carries hierarchy** (800 headline / 700 question / 400–500 body), never size alone.
+
+### 2.4 Colour as decoration
+The design-system sometimes uses its brand green as a page-wide theme. In the app, `primary` means
+"the app's own action" and nothing else (review finding R6: "green is all over the steps").
+
+- Give each element the hue that **means** it: `--sr-*` state, `--ex-*` identity, `--mood-*` distress,
+  `success`/`error` outcome — `03-screen-craft.md` §6.
+- Categorical choices must differ in **colour + icon + word** (R7: fight and flight looked identical).
+
 ---
 
 ## 3. Two kinds of borrow — and how to flag them
@@ -105,3 +125,21 @@ reason) instead of "more colourful", and it is where the emoji/animation replace
 
 If a row changes an already-locked `/docs` value, mark the row **🔒** and reference the flag in the file's
 recommendation (§3 Type B) instead of burying it in the table.
+
+---
+
+## 6. Order of work for any new screen
+
+The three standing docs answer different questions. Work through them in this order:
+
+1. **`/docs` (user stories, IA, screen spec, ledger)** → *what* the screen contains: its 3–5 actions, copy,
+   data calls, flow order. Locked; not restylable.
+2. **This file** → *what may be borrowed* from `design-system/*`, and how to flag a Type B revision.
+3. **`03-screen-craft.md`** → *how it is laid out*: scaffold, safe area, centring, typography/voice, colour
+   roles, motion, control placement, states, keyboard. Its §13 checklist is the definition of done.
+4. **`04-component-library.md`** → *what to build it from*: existing components first, then a shipped
+   pattern to copy, then (spec'd) something new.
+
+**Canonical examples to copy from:** `app/exercise/[id].tsx`, `app/exercise/session/[id].tsx`,
+`app/exercise/category/[key].tsx`, `app/(tabs)/exercises.tsx`. These are the approved, review-passed
+treatments; a new screen should feel like a sibling of them, not a cousin.

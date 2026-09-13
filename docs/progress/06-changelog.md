@@ -2,6 +2,17 @@
 
 Append-only record of changes (decisions + progress). Newest first. Never edit or delete a past entry.
 
+## 2026-09-13 (planned) — Home/dashboard + Diary screens (M2 build-out)
+
+### Scope (from the meetings + IA doc)
+- Mentor expects **Dashboard** and **Journal** screens; both already fit the 5-tab shell (Home · Toolkit ·
+  Exercises · Diary · Portfolio) in `docs/ui/01-navigation-and-ia.md` — no new tabs.
+  - **Dashboard → Home tab** (`(tabs)/index.tsx`), modelled on design-system §21 "Composite Screens"
+    (greeting + date header, overview cards, quick actions). Greeting name "Amir" (not Alex).
+  - **Journal → Diary tab** (`(tabs)/diary.tsx`), grounded in user stories (S19–S24: free-text entry,
+    prompts, edit-window, delete, unlimited/day) + design-system journal card/timeline components.
+- Verify: `npx tsc --noEmit` + `npx expo export --platform android`.
+
 ## 2026-09-11 (2) — Material 3 foundation + tab shell + exercises screen (5-4-3-2-1)
 
 ### MD3 foundation
