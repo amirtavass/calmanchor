@@ -14,6 +14,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import M3Button from "../../../components/M3Button";
 import M3Card from "../../../components/M3Card";
+import ExerciseLoadingScreen from "../../../components/ExerciseLoadingScreen";
 import M3Scale, { moodBandKey } from "../../../components/M3Scale";
 import { getAllExercises, saveCheckin, saveSession } from "../../../lib/db";
 import {
@@ -50,12 +51,23 @@ const CHECKIN_STATES = [
   { key: "fawn", label: "Fawn", icon: "handshake", bg: "srFawnBg", fg: "srFawn" },
 ] as const;
 
-// Helpfulness (S15, D04 friendly words) — three distinct hues so the options
-// don't read as one repeated button: cool neutral → warm gold → green.
-const HELP_OPTIONS: { value: number; label: string; icon: MciGlyph; fg: keyof typeof colors.light }[] = [
-  { value: 0, label: "Not really", icon: "emoticon-neutral-outline", fg: "srFreeze" },
-  { value: 5, label: "A little", icon: "emoticon-outline", fg: "mood3" },
-  { value: 10, label: "Yes, it helped", icon: "emoticon-happy-outline", fg: "success" },
+// Helpfulness (S15, D04 friendly words) — three distinct colour-field tiles
+// (design-system idiom). The tiles are filled with the strong tone and carry
+// `textInverse` glyph + label, so they read at a glance on the light surface
+// panel: cool neutral → warm gold → green. Selected state adds a 2dp ring in
+// the fg tone. The lighter `bg` variants were tried first but read as a
+// repeated near-white row against the surface — the saturated treatment here
+// is unambiguous.
+const HELP_OPTIONS: {
+  value: number;
+  label: string;
+  icon: MciGlyph;
+  fg: keyof typeof colors.light;
+  bg: keyof typeof colors.light;
+}[] = [
+  { value: 0, label: "Not really", icon: "emoticon-neutral-outline", fg: "srFreeze", bg: "srFreeze" },
+  { value: 5, label: "A little", icon: "emoticon-outline", fg: "mood3", bg: "mood3" },
+  { value: 10, label: "Yes, it helped", icon: "emoticon-happy-outline", fg: "success", bg: "success" },
 ];
 
 export default function SessionScreen() {
@@ -190,11 +202,7 @@ export default function SessionScreen() {
   };
 
   if (loading) {
-    return (
-      <View style={[styles.root, { backgroundColor: c.bg, justifyContent: "center", alignItems: "center" }]}>
-        <Text style={{ color: c.textMuted, opacity: 0.85 }}>Loading…</Text>
-      </View>
-    );
+    return <ExerciseLoadingScreen title="Session" />;
   }
 
   if (!exercise) {
@@ -451,17 +459,34 @@ export default function SessionScreen() {
                 Did this exercise help?
               </Text>
               <View style={styles.helpRow}>
-                {HELP_OPTIONS.map((h) => (
-                  <M3Button
-                    key={h.value}
-                    label={h.label}
-                    icon={h.icon}
-                    variant="outlined"
-                    color={c[h.fg]}
-                    selected={helpfulness === h.value}
-                    onPress={() => setHelpfulness(h.value)}
-                  />
-                ))}
+                {HELP_OPTIONS.map((h) => {
+                  const selected = helpfulness === h.value;
+                  const bg = c[h.bg];
+                  const fg = c[h.fg];
+                  const ringColor = selected ? c.text : "transparent";
+                  return (
+                    <Pressable
+                      key={h.value}
+                      onPress={() => setHelpfulness(h.value)}
+                      style={({ pressed }) => [
+                        styles.helpTile,
+                        {
+                          backgroundColor: bg,
+                          borderColor: ringColor,
+                          borderWidth: selected ? 2 : 1,
+                          opacity: pressed ? 0.85 : 1,
+                        },
+                        selected ? styles.helpTileSelected : null,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      accessibilityLabel={h.label}
+                    >
+                      <MaterialCommunityIcons name={h.icon} size={26} color={c.textInverse} />
+                      <Text style={[styles.helpLabel, { color: c.textInverse }]}>{h.label}</Text>
+                    </Pressable>
+                  );
+                })}
               </View>
             </View>
 
@@ -482,7 +507,7 @@ export default function SessionScreen() {
           <>
             <M3Button
               label="Skip"
-              variant="text"
+              variant="outlined"
               color={c.textMuted}
               onPress={() => setStage("confirm")}
               style={{ flex: 1 }}
@@ -491,6 +516,7 @@ export default function SessionScreen() {
               label="Review & save"
               icon="arrow-right"
               iconRight
+              color={c.secondaryActive}
               onPress={() => setStage("confirm")}
               style={{ flex: 1.3 }}
             />
@@ -588,6 +614,7 @@ export default function SessionScreen() {
               label="Save"
               icon="check"
               iconRight
+              color={c.secondaryActive}
               onPress={handleSave}
               disabled={saving}
               style={{ flex: 1.3 }}
@@ -648,7 +675,7 @@ export default function SessionScreen() {
           <>
             <M3Button
               label="Skip"
-              variant="text"
+              variant="outlined"
               color={c.textMuted}
               onPress={() => router.replace("/(tabs)/exercises")}
               style={{ flex: 1 }}
@@ -657,6 +684,7 @@ export default function SessionScreen() {
               label="Done"
               icon="check"
               iconRight
+              color={c.secondaryActive}
               onPress={() => router.replace("/(tabs)/exercises")}
               style={{ flex: 1.3 }}
             />
@@ -744,7 +772,26 @@ const styles = StyleSheet.create({
   stepTextWrap: { alignItems: "center", marginTop: 24, width: "100%" },
 
   // --- Post -----------------------------------------------------------------
-  helpRow: { gap: 10, marginTop: 14, alignItems: "stretch" },
+  helpRow: { gap: 10, marginTop: 14, alignItems: "stretch", flexDirection: "row" },
+  helpTile: {
+    flex: 1,
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  helpTileSelected: {
+    // Outset ring via shadow — pairs with the 2dp border so the selected tile
+    // pops above its neighbours even at a glance.
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  helpLabel: { fontSize: 13, fontWeight: "800", textAlign: "center", lineHeight: 17 },
   note: { marginTop: 12, backgroundColor: "transparent", minHeight: 88, width: "100%" },
 
   // --- Confirm --------------------------------------------------------------

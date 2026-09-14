@@ -1,17 +1,20 @@
 import { StyleSheet, View } from "react-native";
-import { Avatar, IconButton, Text } from "react-native-paper";
-import { useRouter } from "expo-router";
+import { Text } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppTheme } from "../theme/ThemeContext";
 import { colors } from "../theme/tokens";
+import ThemeToggle from "./ThemeToggle";
 
 /**
  * M3 Small app bar — m3.material.io/components/app-bars/specs.
  * Container height 64dp (below the status-bar inset) · `surface` · elevation 0.
  * Headline: title-large (22/28, weight 400, M3). Subtitle: label-medium (12/16) in on-surface-variant.
+ *
+ * Right side is `ThemeToggle` (the only action — profile access moved to the
+ * dashboard greeting card so the top-right stays consistent across screens and
+ * the toggle gets the full width).
  */
 export default function ScreenHeader({ title, subtitle }: { title: string; subtitle?: string }) {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { mode } = useAppTheme();
   const c = colors[mode];
@@ -33,11 +36,9 @@ export default function ScreenHeader({ title, subtitle }: { title: string; subti
           </Text>
         ) : null}
       </View>
-      <IconButton
-        icon={() => <Avatar.Icon size={36} icon="account" />}
-        onPress={() => router.push("/profile/index")}
-        testID="header-avatar"
-      />
+      <View style={styles.actions}>
+        <ThemeToggle />
+      </View>
     </View>
   );
 }
@@ -55,4 +56,5 @@ const styles = StyleSheet.create({
   titles: { flex: 1 },
   title: { fontWeight: "400", fontSize: 22, lineHeight: 28 },
   subtitle: { marginTop: 2, fontSize: 12, lineHeight: 16, fontWeight: "500" },
+  actions: { flexDirection: "row", alignItems: "center", gap: 4 },
 });

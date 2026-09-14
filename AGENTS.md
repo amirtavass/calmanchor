@@ -46,7 +46,7 @@ The source material is the **Bella & Wolf CPTSD Toolkit** — a 118-page peer-cr
   - `docs/ui/00-design-system-usage-rules.md` — the design-system folder is a *visual reference only*; `/docs` wins on conflicts; never carry over emoji-as-iconography or flat/no-state-layer components; Type A vs Type B borrows and the 🔒 flag format.
   - `docs/ui/03-screen-craft.md` — layout/spacing/typography/colour/motion/control rules (three-zone scaffold, safe-area insets, centring without clipping, "text is never bare", one hue per meaning, pinned action bars so controls never move, RN `Animated` vocabulary, states, keyboard). Ends with the per-screen definition-of-done checklist.
   - `docs/ui/04-component-library.md` — reuse `M3Button` / `M3Chip` / `M3Card` / `M3Scale` / `ScreenHeader` before building anything new; token pairs; copy-paste patterns; known constraints (`@expo/vector-icons` only, no native slider).
-  - Canonical approved screens to copy patterns from: `app/exercise/[id].tsx`, `app/exercise/session/[id].tsx`, `app/exercise/category/[key].tsx`, `app/(tabs)/exercises.tsx`.
+  - Canonical approved screens to copy patterns from: `app/exercise/[id].tsx`, `app/exercise/session/[id].tsx`, `app/exercise/category/[key].tsx`, `app/(tabs)/exercises.tsx`, `app/(tabs)/index.tsx` (dashboard), `app/(tabs)/diary.tsx` + `app/diary/*` (journal).
 
 ### Assets
 - Figma screens (registration, login, Pause & Support screen)

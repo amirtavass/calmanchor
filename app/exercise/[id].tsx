@@ -5,6 +5,7 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import M3Button from "../../components/M3Button";
+import ExerciseLoadingScreen from "../../components/ExerciseLoadingScreen";
 import { getAllExercises } from "../../lib/db";
 import {
   CATEGORIES,
@@ -66,11 +67,7 @@ export default function ExerciseDetailScreen() {
     CATEGORIES.find((cat) => cat.key === exercise?.category)?.label ?? exercise?.category ?? "";
 
   if (loading) {
-    return (
-      <View style={[styles.root, { backgroundColor: c.bg, justifyContent: "center", alignItems: "center" }]}>
-        <Text style={{ color: c.textMuted, opacity: 0.85 }}>Loading exercise…</Text>
-      </View>
-    );
+    return <ExerciseLoadingScreen title="Exercise" />;
   }
 
   if (error || !exercise) {

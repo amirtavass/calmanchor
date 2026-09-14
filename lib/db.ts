@@ -45,8 +45,13 @@ export interface TagInput {
 export async function saveJournalEntry(entry: JournalEntryInput) {
   const userId = await ensureSignedIn();
   if (!userId) throw new Error("Sign-in required to save a journal entry");
-  const { error } = await supabase.from("journal_entries").insert(entry);
+  const { data, error } = await supabase
+    .from("journal_entries")
+    .insert({ user_id: userId, ...entry })
+    .select()
+    .single();
   if (error) throw error;
+  return data;
 }
 
 export async function getJournalEntries() {
@@ -54,8 +59,45 @@ export async function getJournalEntries() {
   if (!userId) throw new Error("Sign-in required to view your journal");
   const { data, error } = await supabase
     .from("journal_entries")
-    .select("*, prompts(prompt_text)")
+    .select("*, prompts(prompt_text), journal_entry_tags(tags(id, name))")
     .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Update a journal entry's body — app enforces the S21 edit window (created
+ * before 23:59:59 of the calendar day after creation); this only writes.
+ */
+export async function updateJournalEntry(id: string, body: string) {
+  const userId = await ensureSignedIn();
+  if (!userId) throw new Error("Sign-in required to edit an entry");
+  const { error } = await supabase
+    .from("journal_entries")
+    .update({ body, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
+/** Replace an entry's tag set (S20) — delete + insert the junction rows. */
+export async function setJournalEntryTags(entryId: string, tagIds: string[]) {
+  const userId = await ensureSignedIn();
+  if (!userId) throw new Error("Sign-in required to tag an entry");
+  const { error: delErr } = await supabase
+    .from("journal_entry_tags")
+    .delete()
+    .eq("entry_id", entryId);
+  if (delErr) throw delErr;
+  if (tagIds.length === 0) return;
+  const { error: insErr } = await supabase.from("journal_entry_tags").insert(
+    tagIds.map((tag_id) => ({ entry_id: entryId, tag_id })),
+  );
+  if (insErr) throw insErr;
+}
+
+export async function getPrompts() {
+  const { data, error } = await supabase.from("prompts").select("*").order("prompt_text");
   if (error) throw error;
   return data;
 }

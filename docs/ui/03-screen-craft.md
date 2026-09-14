@@ -3,8 +3,11 @@
 > **Status:** Standing reference — applies to EVERY screen, every milestone. Read this before designing or
 > building any screen; do not re-derive these decisions per task.
 > **Canonical examples (shipped, approved):** `app/exercise/[id].tsx` (detail), `app/exercise/session/[id].tsx`
-> (guided session), `app/exercise/category/[key].tsx` (listing), `app/(tabs)/exercises.tsx` (landing).
-> When a new screen needs a pattern, **copy it from these files** rather than inventing one.
+> (guided session — useful reference for the **helpfulness colour-field tile** row in the post stage),
+> `app/exercise/category/[key].tsx` (listing), `app/(tabs)/exercises.tsx` (landing),
+> `app/(tabs)/index.tsx` (dashboard — greeting, stat cards, **§11 weekly chart**, warm reminder),
+> `app/(tabs)/diary.tsx` + `app/diary/*` (journal — distinct-icon prompts + info-badge + whole-chip
+> Pressable). When a new screen needs a pattern, **copy it from these files** rather than inventing one.
 > **Sibling docs:** `00-design-system-usage-rules.md` (how to borrow from `design-system/*`),
 > `04-component-library.md` (the shared components + tokens), `01-navigation-and-ia.md` (shell/IA),
 > `sections/*` (per-screen designs).

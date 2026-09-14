@@ -46,6 +46,18 @@ These apply to **every** screen and milestone. Do not re-derive their decisions 
 | [`04-landing-directions.md`](sections/exercises/04-landing-directions.md) | Three landing directions with ASCII + Component decisions; recommendation D2 "Colour fields" (approved, shipped). |
 | [`05-session-start-ux-directions.md`](sections/exercises/05-session-start-ux-directions.md) | Three session directions; recommendation D2 "Colour-forward" (approved, shipped). |
 
+### `sections/home/` (M2, shipped)
+
+| File | Concern |
+|---|---|
+| [`00-dashboard.md`](sections/home/00-dashboard.md) | Home/dashboard — design-system §21 Composite 1 (greeting + date, stat cards, today's plan, quick actions, recent, CTA). |
+
+### `sections/diary/` (M2, shipped)
+
+| File | Concern |
+|---|---|
+| [`00-journal.md`](sections/diary/00-journal.md) | Diary/journal — landing, compose, detail; S19–S24 (prompts, tags, edit-window, delete, unlimited/day). |
+
 ## Planned
 
 - `sections/crisis/` — Crisis FAB → Ground / Breathe / Quick Reset → contacts.

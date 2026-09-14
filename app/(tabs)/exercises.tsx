@@ -137,7 +137,7 @@ export default function ExercisesScreen() {
             {ex.duration_minutes ? ` · ~${ex.duration_minutes} min` : " · no fixed time"}
           </Text>
         </View>
-        <M3Button label="Start" onPress={() => router.push(`/exercise/${ex.id}`)} />
+        <M3Button label="Start" color={c.secondary} onPress={() => router.push(`/exercise/${ex.id}`)} />
       </View>
     );
   };
@@ -193,6 +193,7 @@ export default function ExercisesScreen() {
                   </View>
                   <M3Button
                     label="Do again"
+                    color={c.secondary}
                     onPress={() => router.push(`/exercise/session/${recentSession.exercise_id}`)}
                   />
                 </View>
@@ -217,7 +218,7 @@ export default function ExercisesScreen() {
                   style={styles.browseAll}
                   accessibilityRole="button"
                 >
-                  <Text style={[styles.browseAllText, { color: c.primary }]}>
+                  <Text style={[styles.browseAllText, { color: c.secondary }]}>
                     Browse all categories →
                   </Text>
                 </Pressable>

@@ -54,7 +54,8 @@ shell (auth is silent), no clinician views, no multi-user.
 ```
 
 > **Dashboard** is the *review* vertical and is **M3** (needs data to mean anything). For M1/M2 it is the
-> home tab placeholder. **Portfolio** is M3. Both are routable placeholders now.
+> home tab — **Home IS the dashboard** (design-system §21 Composite 1, shipped 2026-09-13); the separate
+> `dashboard.tsx` placeholder is folded into `index.tsx`. **Portfolio** is M3. Both are routable now.
 
 ---
 
@@ -109,10 +110,12 @@ A user here can (M3):
 3. **Add a custom entry** ("call my sister", "make tea")
 4. **Reorder by priority** (feeds "My Quick Reset" in Crisis)
 
-### DASHBOARD — `(tabs)/dashboard.tsx` — *Review* — **M3 placeholder**
-Verticals: **Review**
+### DASHBOARD — `(tabs)/index.tsx` (Home) — *Check-in · Do · Review* — **M2 shell / M3 data**
+Verticals: **Check-in, Do (quick relief), Review**
 
-A user here can (M3):
+The Home tab IS the dashboard (design-system §21 Composite 1, shipped 2026-09-13). In M2 it shows the
+greeting header, stat cards, today's plan, quick actions and recent activity; in M3 it gains the review
+patterns:
 1. **See trigger frequency** over time
 2. **See survival-response distribution**
 3. **See exercise effectiveness** (helpfulness ratings)
@@ -149,12 +152,11 @@ app/
 ├─ _layout.tsx                 Root: ThemeProvider + Stack + StatusBar
 ├─ (tabs)/
 │  ├─ _layout.tsx              Tabs + <CrisisFab/> overlay
-│  ├─ index.tsx                Home / check-in            [M3 home; M2 placeholder]
+│  ├─ index.tsx                Home = dashboard (§21 Composite 1)   [M2; data M3]
 │  ├─ toolkit.tsx              Toolkit (PDF + chapters)   [M2]
 │  ├─ exercises.tsx            Exercise catalogue         [M2]
-│  ├─ diary.tsx                Journal                    [M2]
-│  ├─ portfolio.tsx            Portfolio                  [M3 placeholder]
-│  └─ dashboard.tsx            Pattern Dashboard          [M3 placeholder]
+│  ├─ diary.tsx                Journal (S19–S24)          [M2]
+│  └─ portfolio.tsx            Portfolio                  [M3 placeholder]
 ├─ crisis/
 │  ├─ _layout.tsx              Full-screen modal (no tabs/header)
 │  ├─ index.tsx  ground.tsx  breathe.tsx  reset.tsx

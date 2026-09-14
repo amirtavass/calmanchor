@@ -6,6 +6,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import M3Button from "../../../components/M3Button";
 import M3Card from "../../../components/M3Card";
+import M3Skeleton from "../../../components/M3Skeleton";
 import { getExercisesByCategory } from "../../../lib/db";
 import { CATEGORIES, CATEGORY_TOKENS, Exercise, ExerciseCategory } from "../../../types/exercise";
 import { useAppTheme } from "../../../theme/ThemeContext";
@@ -72,7 +73,20 @@ export default function CategoryScreen() {
 
       <ScrollView contentContainerStyle={styles.body}>
         {loading ? (
-          <Text style={muted(c)}>Loading…</Text>
+          <>
+            {[0, 1, 2, 3].map((i) => (
+              <M3Card key={i} style={styles.card}>
+                <View style={styles.cardRow}>
+                  <M3Skeleton variant="avatar" />
+                  <View style={styles.cardText}>
+                    <M3Skeleton variant="text-multi" width="75%" />
+                    <M3Skeleton variant="text-multi" width="50%" style={styles.cardSub} />
+                  </View>
+                  <M3Skeleton variant="block" style={styles.startBtn} />
+                </View>
+              </M3Card>
+            ))}
+          </>
         ) : error ? (
           <View style={styles.errorBox}>
             <Text style={[muted(c), { color: c.error }]}>Couldn't load exercises. {error}</Text>
@@ -133,6 +147,10 @@ const styles = StyleSheet.create({
   card: { marginBottom: 10 },
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
   text: { flex: 1 },
+  cardRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  cardText: { flex: 1 },
+  cardSub: { marginTop: 6 },
+  startBtn: { width: 64, height: 32, borderRadius: 16 },
   errorBox: { paddingVertical: 24, alignItems: "center" },
   retry: { marginTop: 12 },
 });

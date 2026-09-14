@@ -2,16 +2,231 @@
 
 Append-only record of changes (decisions + progress). Newest first. Never edit or delete a past entry.
 
-## 2026-09-13 (planned) — Home/dashboard + Diary screens (M2 build-out)
+## 2026-09-17 — Dashboard greeting moved to top + per-mode warm-gold bg
+
+### Dashboard (`app/(tabs)/index.tsx`)
+- **Greeting card moved to the top of the body** (was anchored at the bottom). New order:
+  greeting card → stats row → today's plan → quick relief → weekly window chart → recent
+  activity → CTA → warm reminder. Spacing tightened to `marginTop: 4 / marginBottom: 16` so the
+  card sits flush under the ScreenHeader without an awkward gap.
+- **Light-mode greeting bg swapped** from `warmGoldTint` (#4A3A28 — dark warm brown) to
+  `warmGold` (#D4B882 — light gold). The dark tint made the `text` headline unreadable on the cream
+  canvas. Dark mode keeps `warmGoldTint`. Medallion bg + accent (kicker, chevron, glyph) flip
+  inversely so the card is always readable on its background in both modes:
+  - **Light mode**: bg `warmGold` (light gold) · medallion `warmGoldTint` (dark) · glyph
+    `warmGold` (light) · kicker `warmGoldTint` · reflection `secondary` · chevron `warmGoldTint`.
+  - **Dark mode**: bg `warmGoldTint` (dark) · medallion `warmGold` (light) · glyph `textInverse`
+    · kicker `warmGold` · reflection `textMuted` · chevron `warmGold`.
+- `docs/ui/sections/home/00-dashboard.md` ASCII + decision row updated to match.
+
+### Verification
+- `npx tsc --noEmit` EXIT 0 · `npx expo export --platform android` bundles (4.2 MB hbc).
+
+## 2026-09-16 — Avatar removed, greeting card anchored bottom, design-system loaders, light-mode contrast, helpfulness interactivity
+
+### Header & greeting
+- **`components/ScreenHeader.tsx`** — avatar removed; the top-right now carries the `ThemeToggle` only
+  and gets the full width. Profile access moved into the dashboard greeting card's chevron, so the
+  top-right action cluster is one button on every screen.
+- **`app/(tabs)/index.tsx` (dashboard)** — `ScreenHeader` no longer carries the date/greeting
+  subtitle. A new featured **greeting card** anchors the bottom of the screen: warm-gold tint
+  (`warmGoldTint`) background, `warmGold` accent, time-of-day icon
+  (`weather-sunset-up` / `white-balance-sunny` / `weather-night`), uppercase date kicker, "Good
+  morning|afternoon|evening, Amir" headline, and a single supportive reflection sentence that
+  changes with the time of day. Press → `/profile`. Fills the empty bottom space the warm
+  reminder couldn't.
+
+### Theme
+- **`theme/ThemeContext.tsx`** — `system` preference removed (mentor: "auto is too many"). Two
+  modes only (`light` / `dark`), persisted to AsyncStorage; `toggle()` cycles light ↔ dark.
+  Default still falls back to the system scheme on first launch so we don't flash from light to
+  dark.
+- **`components/ThemeToggle.tsx`** — dropped "Auto" label. Now reads "Light" / "Dark" only, with
+  the matching sun/moon glyph.
+- **Light-mode contrast tweak (`theme/tokens.ts`)** — `textMuted` `#5A5645` → `#4A4536`,
+  `textFaint` `#9C9583` → `#6E6857`. Body-text contrast against `--color-bg` is now solidly
+  WCAG-AA across the screen (was borderline on `textFaint` — 3.2 : 1). The cream canvas
+  `--color-bg: #F4F1EB` is unchanged (design-system §2 anchor).
+
+### Design-system §17 loaders (skeleton + spinner) — borrowed
+- **`components/M3Skeleton.tsx`** — direct lift of the design-system §17 "Skeleton Loader".
+  Interpolation between `--color-surface-offset` and `--color-surface-dynamic` running on the
+  design-system `shimmer` keyframes (1.5 s loop). Variants: `text` (14 dp), `text-multi`
+  (decreasing-width stack), `card` (120 dp), `avatar` (40 dp, radius 999), `block` (custom).
+- **`components/M3Skeleton.tsx > SkeletonTextStack`** — convenience for the 100% / 80% / 60%
+  text stack pattern.
+- **`components/M3Spinner.tsx`** — design-system §19 "Button with Loading" 16 dp circular border
+  spinner, 1 s linear spin, accepts `tint` override.
+- **`components/ExerciseLoadingScreen.tsx`** — full-screen skeleton that mirrors the live
+  `app/exercise/[id].tsx` layout (category chip → headline → meta row → description panel →
+  steps list → CTA). Used by `app/exercise/[id].tsx` and `app/exercise/session/[id].tsx` so the
+  transition into the live screen is invisible.
+- **`app/exercise/category/[key].tsx`** — replaced the inline "Loading…" text with four skeleton
+  list rows matching the real category row layout.
+- **`app/(tabs)/diary.tsx`** — replaced the inline "Loading your journal…" text with two prompt
+  skeleton cards + three entry skeleton rows.
+
+### Diary compose
+- **Placeholder colour** changed from `textFaint` (no-prompt) and `exJournal` (with prompt) to
+  `textMuted` (no-prompt) and `secondary` (with prompt). Both now match the warm-cream screen —
+  the previous `exJournal` purple read as off-tone against the surface card.
+
+### Session post-stage visibility
+- **Helpfulness tiles** now have an **always-on 1 dp `text` border** so they read as interactive
+  even when unselected. Selected state bumps to a 2 dp ring + outset shadow. Added a 0.85
+  opacity press feedback so taps are felt. Filled with the strong tone (srFreeze / mood3 /
+  success) + `textInverse` glyph + label.
+- **Review & save / Save / Done** (post, confirm, done nav buttons) moved from `secondary`
+  (#686040) to **`secondaryActive` (#4A4230)**. The lighter secondary was failing contrast
+  against the cream bg for the small text-on-fill case; the darker active tone is unambiguously
+  readable.
+
+### Verification
+- `npx tsc --noEmit` EXIT 0 · `npx expo export --platform android` bundles (4.2MB hbc). Reload
+  via `npx expo start --dev-client`.
+
+## 2026-09-15 — Dark mode toggle + green tone-down + diary/new rewrite + session nav visibility
+
+### Dark mode (M2 polish, mentor direction)
+- **`theme/ThemeContext.tsx` extended** to three modes (`light` / `dark` / `system`) persisted to
+  AsyncStorage under `calmanchor.themeMode`. The resolved `mode` (still `"light" | "dark"`) keeps
+  the existing `const c = colors[mode]` pattern working — every screen compiles unchanged. A new
+  `togglePreference()` cycles light → dark → system → light so a single button is enough.
+- **`components/ThemeToggle.tsx`** — small sun/moon Pressable, `surface2` background, `secondary`
+  (warm olive) glyph. Always paired with the avatar so the top-right reads as a consistent action
+  cluster on every screen. Glyph swaps between `weather-night` (current = light) and `weather-sunny`
+  (current = dark); a small "Theme · Auto|Light|Dark" kicker surfaces the current resolved mode.
+- **`components/ScreenHeader.tsx`** — right-side is now `[ThemeToggle] [Avatar]`. The dashboard no
+  longer has its own bespoke header; it uses the same ScreenHeader so the top-right of every screen
+  is identical (fixes the inconsistency the mentor called out).
+- **Green tone-down** (design-system §7 secondary over primary): the loud `primary` green
+  (`#1C4A32`) is now reserved for the active-tab indicator and CTAs that *must* feel urgent.
+  Everywhere else — stat values, step circles, exercise Start/Do-again, diary Write/Save, session
+  Review & save / Save / Done, the "Browse all categories" link — has moved to **`secondary` (warm
+  olive `#686040`)** for a calmer feel. `accent` (sage `#4A7C59`) is used where we still want green
+  (Sessions stat, Check-in done step, recent-session icon) but at a softer saturation. The design
+  system's default page bg (`#F4F1EB` light / `#1E2E16` dark) is unchanged — the issue was the green
+  *accents*, not the cream canvas.
+
+### Diary compose (`app/diary/new.tsx`) — full rewrite
+- **Prompts are now the TextInput's `placeholder`**, so the prompt is *inside* the writing surface
+  rather than a separate panel pinned above it. The selected prompt is also surfaced as a small
+  "PROMPT" kicker chip + close button above the field so it's obvious where the placeholder came
+  from. The close button clears the prompt and reverts the placeholder to "Write here…".
+- **Collapsible prompt picker** below the field: "Try a prompt" / "Change prompt" / "Hide prompts"
+  toggle. The picker collapses as soon as the user has any text in the field, giving the keyboard
+  the full real-estate.
+- **Back button** added to the header (top-left, 36 dp circular Pressable on `surfaceOffset`,
+  `arrow-left` glyph). Leave (text, top-right) is kept as the explicit discard.
+- `KeyboardAvoidingView behaviour="height"` on Android (already in last session) + ScrollView
+  `automaticallyAdjustKeyboardInsets` for iOS. Save button uses `secondary` (warm olive).
+
+### Exercise session post stage (`app/exercise/session/[id].tsx`)
+- **Helpfulness tiles are now filled with the strong tone** (`srFreeze`/`mood3`/`success`) and carry
+  `textInverse` glyph + label, instead of the previous pastel `*-bg` fill that disappeared into the
+  `surface` panel. Selected state adds a 2 dp fg-colour ring plus an outset shadow so it pops.
+- **Skip nav button**: was `variant="text"` + muted colour (effectively invisible) → now
+  `variant="outlined"` + muted colour so it reads as a real button.
+- **Review & save / Save / Done nav buttons**: moved from default `primary` (loud green) →
+  `secondary` (warm olive) for consistency with the rest of the app.
+- Fixed a stray `}` left over from the original file that closed the switch before `case "confirm"`,
+  making the file not type-check until cleaned up.
+
+### Verification
+- `npx tsc --noEmit` EXIT 0 · `npx expo export --platform android` bundles (4.2MB hbc).
+- Dev-client reload via `npx expo start --dev-client`.
+
+## 2026-09-14 — Dashboard + Diary polish + session helpfulness visibility (mentor feedback)
+
+### Dashboard (`app/(tabs)/index.tsx`)
+- **"This week in your window" chart** (design-system §11 — App Screen Sketch): 7-bar weekly view with
+  per-day state colours (`--ns-window`, `--ns-hyper`, `--ns-hypo`), legend, and a dashed-border Today
+  column (pre-data). Header shows the running tally (`4 of 6 days in window`) + a window-green pill with
+  the percentage.
+- **Engagement stat values**: Sessions shows real count when signed in, falls back to a dummy `12`;
+  **Streak** now `5d` (warning) and **Window** now `% in window` (success) — both dummy placeholders
+  until M3, replacing the previous `—` so the row reads alive.
+- **Warm reminder card** (`exSelfkindBg`/`exSelfkind`, `hand-heart-outline`) below the CTA to fill the
+  empty space below "Start today's session" with a colour-contrast nudge → `/diary/new`. The palette
+  pulls in a fifth hue family so the bottom of the screen no longer reads as blank.
+- All new icons verified against MCI glyphmap. `nsWindow/nsHyper/nsHypo` are pulled from the existing
+  tokens (already in both light + dark schemes).
+
+### Diary landing (`app/(tabs)/diary.tsx`)
+- **Distinct icon per prompt** (`notebook-heart-outline`, `meditation`, `flower-tulip-outline`,
+  `book-open-page-variant-outline`, `thought-bubble-outline`, `candle` — cycles if more) so the row no
+  longer reads as the same card repeated three times.
+- **Bolder, kicker-led prompt text**: added an `uppercase · 11/800 · 0.7 tracking` "Prompt" label, body
+  bumped to `15/22/600`, plus a chevron-right in `--ex-journal` to read as a tappable list item.
+- **Removed duplicate "Write a new entry" buttons** in the signed-out gentle card and empty state —
+  the top filled M3Button is the only CTA now. Gentle card + empty state now keep their icon, title
+  and supportive line so the screen still explains itself.
+- Tinted icon medallion bumped 34→40 dp to match the dashboard quick-action tiles for consistency.
+
+### Diary compose (`app/diary/new.tsx`)
+- **Whole prompt chip is now Pressable** (previously only the `+`/`✕` glyph was tappable) with full
+  `accessibilityRole="button"` + selected state. Glyph swapped from `+`/`✕` text to MCI `plus`/`close`.
+- **Keyboard**: KAV behaviour changed from `undefined` (Android no-op) → `"height"` on Android so
+  pinned Save and the input are not occluded by the soft keyboard; ScrollView gets
+  `automaticallyAdjustKeyboardInsets` for iOS inset adjustment. Mirrors the pattern from the exercise
+  session screen.
+- **"Prompts are optional" notice**: replaced the small muted subline with a tinted `exJournalBg`
+  info-badge (`information-outline` + 12.5/18/700 sentence) sitting above the prompt panel —
+  impossible to miss now.
+
+### Exercise session (`app/exercise/session/[id].tsx`)
+- **Helpfulness tiles** (the "Did this exercise help?" row, S15 + D04 friendly words) rebuilt as
+  **colour-field Pressable tiles** — `bg` background + matching `fg` icon and label, two-px border
+  in `fg` when selected. The previous outlined M3Button variant disappeared against the
+  `surface` panel; the new tiles read at a glance in all three colour families (`srFreeze/srFreezeBg`,
+  `mood3/mood3Bg`, `success/successTint`). All three colours already had light + dark tokens.
+- `HELP_OPTIONS` now carries `bg` alongside `fg` so the tile can fill with the paired surface.
+
+### Verification
+- `npx tsc --noEmit` EXIT 0 · `npx expo export --platform android` bundles (4.2MB hbc). Dev-client
+  reload via `npx expo start --dev-client`.
+
+## 2026-09-13 — Home/dashboard + Diary (journal) screens (M2 build-out)
 
 ### Scope (from the meetings + IA doc)
 - Mentor expects **Dashboard** and **Journal** screens; both already fit the 5-tab shell (Home · Toolkit ·
   Exercises · Diary · Portfolio) in `docs/ui/01-navigation-and-ia.md` — no new tabs.
   - **Dashboard → Home tab** (`(tabs)/index.tsx`), modelled on design-system §21 "Composite Screens"
-    (greeting + date header, overview cards, quick actions). Greeting name "Amir" (not Alex).
-  - **Journal → Diary tab** (`(tabs)/diary.tsx`), grounded in user stories (S19–S24: free-text entry,
-    prompts, edit-window, delete, unlimited/day) + design-system journal card/timeline components.
-- Verify: `npx tsc --noEmit` + `npx expo export --platform android`.
+    (greeting + date header, stat cards, today's plan, quick actions, recent, CTA). Greeting name "Amir".
+  - **Journal → Diary tab** (`(tabs)/diary.tsx`), grounded in user stories (S19–S24) + design-system
+    journal components (§17 empty state, §18 list/chip idiom).
+
+### Dashboard (`app/(tabs)/index.tsx`) — design-system §21 Composite 1
+- Greeting header: computed date ("Sunday, 13 September") + time-of-day greeting + "Amir" (Alex→Amir) +
+  warm-gold "Window" pill (token-paired `warmGoldTint`/`warmGold` + `star-four-points` glyph) + avatar → `/profile`.
+- Stat cards (Sessions / Streak / Window): **Sessions wired to real data** when signed in; Streak/Window
+  read "—" until M3 (S26 keeps them descriptive-only, no mood trend).
+- "Today's plan" stepper: Check-in (✓, done) → Exercise (active) → Journal (pending), each step navigates.
+- Quick actions: **colour-fields tiles** (Breathe/Ground/Journal/Crisis) in `--ex-*` pairs with MCI glyphs
+  (`weather-windy`, `leaf`, `notebook-edit-outline`, `lifebuoy`), routes to real screens.
+- Recent activity: real recent session + journal entry when signed in; hidden otherwise (partial/signed-out).
+- CTA: full-width `M3Button` "Start today's session" → Exercises.
+- Icons are MaterialCommunityIcons (rules §2.1) — no emoji icon system.
+
+### Journal (`app/(tabs)/diary.tsx` + `diary/new.tsx` + `diary/[id].tsx`) — S19–S24
+- **Landing**: ScreenHeader + "Write a new entry" primary; **Reflection prompts** (S23, from `prompts`)
+  as tinted `exJournalBg` cards with `lightbulb-on-outline` medallions; **Your entries** timeline
+  (newest first) with the design-system empty state (§17: "No journal entries yet" + supportive line +
+  write action); signed-out gentle card (private-to-you + write, sign-in on save — S01).
+- **Compose** (`new.tsx`): quiet header, KeyboardAvoidingView, prompt preselect via `?prompt=`, optional
+  prompt chips, free-text `TextInput`, pinned **Save entry** → `saveJournalEntry()` (returns the new row).
+- **Detail** (`[id].tsx`): back + entry medallion, prompt ref, body card, tag chips; **edit within the
+  S21 window** (created before 23:59:59 of the next calendar day — app-enforced) via `updateJournalEntry()`;
+  **delete any time** (S22) with a design-system §17 confirm modal → `deleteJournalEntry()`.
+
+### Data layer (`lib/db.ts`)
+- `saveJournalEntry` now returns the inserted row (needed for the flow).
+- `getJournalEntries` now includes `prompts(prompt_text)` **and** `journal_entry_tags(tags(id,name))`.
+- New: `getPrompts()`, `updateJournalEntry(id, body)` (S21), `setJournalEntryTags(entryId, tagIds)` (S20).
+
+### Verification
+- `npx tsc --noEmit` EXIT 0 · `npx expo export --platform android` bundles (4.2MB hbc). Dev-client reload
+  via `npx expo start --dev-client` to view on device.
 
 ## 2026-09-11 (2) — Material 3 foundation + tab shell + exercises screen (5-4-3-2-1)
 

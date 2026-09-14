@@ -129,6 +129,22 @@ it into `components/`, delete the duplicate, and add it to §2 above.**
 | **SUDS chip** | session confirm | 38dp min-width circle, radius 19, `moodBandKey(v)` fill, `textInverse` 16/800 label |
 | **Tinted tile grid** | landing categories | `M3Card fill={--*-bg}` at `width: "48%"`, glyph 28 + label 16/24/700 + count 12/16 @ 0.75 |
 | **Two-line list row** | landing quick start | paddingV 12, gap 12, 40dp tinted lead icon, title 16/24/400 + supporting 14/20, trailing `M3Button` |
+| **Greeting header** | home dashboard | `insets.top + 8`; left = date 13/600 muted + greeting 22/800; right = status pill + avatar; on `bg` (not a surface bar) |
+| **Stat card** | home dashboard | `surface`, radius 12, paddingV 14, value 24/800 (semantic colour) + label 12/500 muted; row of 3 with gap 8 |
+| **Stepper** | home "today's plan" | 28dp circles (done = `success`+check, active = `primary`+number, pending = `surfaceOffset`+muted number), 2dp connectors, label 12/500 below |
+| **Status pill** | home Window chip | non-interactive: `warmGoldTint` bg + `warmGold` text + glyph 14, radius 999, paddingH 12 paddingV 6 |
+| **Empty state** | diary | 64dp medallion (`--*-bg`, glyph 32) + 18/800 title + one supportive line (maxWidth 280) + full-width `M3Button` action |
+| **Entry card** | diary list | `surface`, radius 12, padding 14, gap 12: 40dp tinted icon (`exJournalBg`/`exJournal`) + title 15/600 (2 lines) + meta 13/500 (date · tags) + trailing chevron |
+| **Tinted icon circle** | diary prompt/entry medallions | 34dp radius 10 `--*-bg` + glyph 18 in `--*` (prompt) · 40dp radius 12 (entry row) |
+| **Helpfulness tile** | session post | colour-field Pressable filled with the *strong* tone (e.g. `srFreeze`/`mood3`/`success`) + `textInverse` glyph 26 + label 13/800. Always-on 1 dp `text` border so it reads as interactive; selected = 2 dp `text` ring + outset shadow; 0.85 opacity on press. Three tiles share width via `flex: 1` + gap 10. **Never use the pastel `*-bg` variants here** — they read as a repeated near-white row against the surface panel. |
+| **Filled CTA — strong contrast** | session Save / Done / Review & save, dashboard CTA, diary Write/Save | `M3Button` filled with `secondaryActive` (#4A4230), `textInverse` label. `secondary` (#686040) is too low-contrast for label-on-fill on the cream canvas; reserve `secondary` for outlined buttons and quiet elements. |
+| **Theme toggle** | every screen header | small Pressable (`surface2` + `border`, 36 dp height, 18 radius), `weather-night`/`weather-sunny` MCI glyph in `secondary`, two-line `Theme · Light\|Dark` label. Cycles light ↔ dark. Avatar was removed from the header; profile access is reached through the dashboard greeting card's chevron. |
+| **Skeleton placeholder** (`M3Skeleton`) | exercise detail / session / category / diary landing | direct lift of design-system §17. Interpolation between `surfaceOffset` and `surfaceDynamic` on the `shimmer` keyframes (1.5 s loop). Variants: `text` 14 dp, `text-multi` decreasing-width stack, `card` 120 dp, `avatar` 40 dp radius 999, `block` custom. Use `SkeletonTextStack` for the 100 / 80 / 60 % pattern. |
+| **Spinner** (`M3Spinner`) | inline progress (button loading, search) | direct lift of design-system §19. 16 dp circular border, 1 s linear spin. `tint` override (default `textMuted`); pair with filled buttons for save/load states. |
+| **Exercise loading screen** | exercise detail / session | full-screen skeleton mirroring the live detail layout (category chip → headline → meta row → description panel → steps list → CTA). Same ScreenHeader, same bg, so the transition into the live screen is invisible. |
+| **Weekly window chart** | home §11 | 7 bars in a 56dp row, gap 8, `alignItems: flex-end`; per-day `--ns-*` fill, today is dashed-border (no fill) at the current day's slot height; legend below |
+| **Warm reminder card** | home below CTA | `exSelfkindBg` 14 dp radius row, 40 dp `exSelfkind` medallion, title 15/800 + body 13/19 0.9, trailing chevron → relevant action |
+| **Info badge** | diary/new | tinted row: `--*-bg` background, 12 dp radius, 10 dp vertical padding, `information-outline` glyph 14 + text 12.5/18/700 in `--*`. Use for notices the user must see (e.g. "optional") |
 | **Breathing ring** | session steps | 180dp wrap; 112dp ring (2dp `--ex-*` border, `--*-bg` fill, glyph 44) + absolute halo; scale 1→1.045 (4s) and halo 1→1.65 / 0.4→0 (3s) |
 | **Full-bleed chip scroller** | landing states | horizontal `ScrollView`, `marginHorizontal: -16` + content `paddingHorizontal: 16`, gap 8 |
 

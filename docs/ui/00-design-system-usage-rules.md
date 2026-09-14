@@ -78,6 +78,20 @@ The design-system sometimes uses its brand green as a page-wide theme. In the ap
   `success`/`error` outcome — `03-screen-craft.md` §6.
 - Categorical choices must differ in **colour + icon + word** (R7: fight and flight looked identical).
 
+### 2.5 Loud-green default — use `secondary` for app CTAs
+`--color-primary` (`#1C4A32` light) is a deep forest green that reads as **loud energy** when used as
+the default CTA colour on a warm-cream canvas (mentor finding 2026-09-15: "green gives very unsubtle
+energy to the user").
+
+- **App CTAs default to `secondary` (warm olive `#686040`)**, not `primary`. Pass
+  `color={c.secondary}` explicitly to `M3Button` so the M3 primary default never leaks in.
+- **`primary` is reserved** for the active-tab indicator and *one* in-screen action that must feel
+  like "the app itself" (e.g. the save-entry bar). Anywhere else, drop to `secondary`.
+- **Soft green** (where we still want the green hue) → **`accent` (sage `#4A7C59`)** — uses in stat
+  cards, completed-check-in step, recent-session icon.
+- **Page bg** stays `--color-bg` (`#F4F1EB` light / `#1E2E16` dark) — the issue was the green
+  *accents*, not the cream canvas.
+
 ---
 
 ## 3. Two kinds of borrow — and how to flag them
@@ -140,6 +154,30 @@ The three standing docs answer different questions. Work through them in this or
 4. **`04-component-library.md`** → *what to build it from*: existing components first, then a shipped
    pattern to copy, then (spec'd) something new.
 
-**Canonical examples to copy from:** `app/exercise/[id].tsx`, `app/exercise/session/[id].tsx`,
-`app/exercise/category/[key].tsx`, `app/(tabs)/exercises.tsx`. These are the approved, review-passed
-treatments; a new screen should feel like a sibling of them, not a cousin.
+**Canonical examples to copy from:** `app/exercise/[id].tsx` (uses `ExerciseLoadingScreen`),
+`app/exercise/session/[id].tsx` (helpfulness strong-tone tile + outlined Skip nav + uses
+`ExerciseLoadingScreen`), `app/exercise/category/[key].tsx` (inline skeleton list rows),
+`app/(tabs)/exercises.tsx` (secondary-CTA), `app/(tabs)/index.tsx` (dashboard + §11 chart + warm
+reminder + **greeting card** anchored bottom + `secondary` CTA + ScreenHeader),
+`app/(tabs)/diary.tsx` (distinct prompt icons + de-dup CTA + skeleton entries) + `app/diary/new.tsx`
+(info-badge + prompt-as-placeholder + collapsible picker + back button) + `app/diary/[id].tsx`.
+Every screen uses `components/ScreenHeader.tsx` which carries `components/ThemeToggle.tsx` on the
+right (avatar removed — profile access is reached through the dashboard greeting card). Top-right
+action cluster is identical across the app. Loading states use `components/M3Skeleton.tsx` /
+`components/M3Spinner.tsx` / `components/ExerciseLoadingScreen.tsx` (direct lifts of design-system
+§17 + §19). These are the approved, review-passed treatments; a new screen should feel like a
+sibling of them, not a cousin.
+
+### 6.1 Theme + loading patterns
+
+- **Dark mode is user-picked, not auto.** `ThemeContext` exposes `light` / `dark` only; the
+  toggle cycles light ↔ dark and persists to AsyncStorage. There is no "follow system" mode —
+  the toggle is the source of truth. Default to system scheme only on first launch before the
+  stored value is read.
+- **Light-mode body text contrast** must pass WCAG AA. `--color-text-muted` and `--color-text-faint`
+  are tuned darker than the design-system defaults so muted body copy is readable on the cream
+  canvas (`#F4F1EB`). If you change the canvas, re-tune the muted tones.
+- **Loading states borrow from design-system §17 / §19.** Use `M3Skeleton` (shimmer animation,
+  surface-offset ↔ surface-dynamic gradient) for in-content placeholders and
+  `ExerciseLoadingScreen` for full-screen fallbacks. Use `M3Spinner` for inline progress (button
+  loading, search, etc.). Do not show plain "Loading…" text where a skeleton would do.
