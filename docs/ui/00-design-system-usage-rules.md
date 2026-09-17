@@ -158,9 +158,11 @@ The three standing docs answer different questions. Work through them in this or
 `app/exercise/session/[id].tsx` (helpfulness strong-tone tile + outlined Skip nav + uses
 `ExerciseLoadingScreen`), `app/exercise/category/[key].tsx` (inline skeleton list rows),
 `app/(tabs)/exercises.tsx` (secondary-CTA), `app/(tabs)/index.tsx` (dashboard + §11 chart + warm
-reminder + **greeting card** anchored bottom + `secondary` CTA + ScreenHeader),
-`app/(tabs)/diary.tsx` (distinct prompt icons + de-dup CTA + skeleton entries) + `app/diary/new.tsx`
-(info-badge + prompt-as-placeholder + collapsible picker + back button) + `app/diary/[id].tsx`.
+reminder + **greeting card** + `secondary` CTA + ScreenHeader), `app/(tabs)/toolkit.tsx`
+(Contents/Read segmented control + grouped chapter list + `setPage()` jump + skeleton),
+`app/(tabs)/diary.tsx` (distinct prompt icons + de-dup CTA + trigger card + skeleton entries) +
+`app/diary/new.tsx` (info-badge + prompt-as-placeholder + collapsible picker + back button) +
+`app/diary/trigger.tsx` (optional colour-field pickers + info-badge) + `app/diary/[id].tsx`.
 Every screen uses `components/ScreenHeader.tsx` which carries `components/ThemeToggle.tsx` on the
 right (avatar removed — profile access is reached through the dashboard greeting card). Top-right
 action cluster is identical across the app. Loading states use `components/M3Skeleton.tsx` /

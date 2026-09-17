@@ -15,6 +15,7 @@
 | **S22** delete a single entry | Detail delete (any time) behind a design-system §17 confirm modal; row-level, affects nothing else. |
 | **S23** prompted journaling | Landing lists workbook-grounded `prompts`; `?prompt=<id>` preselected in compose. |
 | **S24** unlimited entries/day | No day-limit anywhere (schema has no (user,day) uniqueness — S24 PASS). |
+| **Trigger log (M2-05)** | Landing "Log a trigger" card → `diary/trigger.tsx`; saves a check-in row with `triggers[0]` + optional `ns_state` / `survival_response` / `note` → `saveCheckin()`. |
 
 ## 2. Landing (`app/(tabs)/diary.tsx`)
 
@@ -69,7 +70,16 @@
   "Change prompt" toggle. Prompt preselect from `?prompt=` (deep link from landing) still works.
 - `saveJournalEntry({ body, prompt_id })` prompts Google sign-in at the moment of saving (S01, browse-first).
 
-## 4. Detail (`app/diary/[id].tsx`)
+## 4. Trigger log (`app/diary/trigger.tsx`) — M2-05
+
+- Quiet header (back · "Log a trigger" · Leave), KAV + `automaticallyAdjustKeyboardInsets`.
+- **Info badge** (`exGroundBg`/`exGround`, `crosshairs-question`) — "Noticing what triggers you… nothing here is judged".
+- **Trigger name** TextInput (required, `autoFocus`) → `checkins.triggers[0]`.
+- **Optional** `ns_state` picker (window/hyper/hypo) + `survival_response` picker (fight/flight/freeze/fawn) as colour-field chips; **optional note**.
+- Pinned **Save trigger** (`secondary`) → `saveCheckin({ triggers, ns_state, survival_response, note })`; sign-in prompted at save (S01).
+- Trigger rows land in the same `checkins` table the dashboard/M3 pattern charts read from.
+
+## 5. Detail (`app/diary/[id].tsx`)
 
 - Back (top-left text button) → medallion → date → prompt ref → body card → tag chips.
 - **Edit**: `canEdit` = `now ≤ end of (created day + 1)`. Enabled → inline edit + **Save changes**
@@ -77,13 +87,14 @@
 - **Delete**: outlined error button → §17 modal ("This cannot be undone…") → `deleteJournalEntry(id)` → back.
 - Craft §7.4: in-flight disables the action, errors are inline `bodySmall` near the bar — never an alert.
 
-## 5. Data layer (`lib/db.ts`)
+## 6. Data layer (`lib/db.ts`)
 
 - `getJournalEntries()` → rows with `prompts(prompt_text)` + `journal_entry_tags(tags(id,name))`.
 - `saveJournalEntry()` returns the inserted row. New: `getPrompts()`, `updateJournalEntry(id, body)`,
   `setJournalEntryTags(entryId, tagIds)` (S20). `deleteJournalEntry(id)` (S22, pre-existing).
+- Trigger log reuses the existing `saveCheckin()` (`checkins` row, browse-first sign-in at save).
 
-## 6. Craft cross-check (03-screen-craft §13)
+## 7. Craft cross-check (03-screen-craft §13)
 
 - Three-zone scaffold; quiet headers; pinned action bars; edit-window + delete controls in the bar.
 - Colour: journal identity = `exJournal`/`exJournalBg` (purple) for prompts/medallions; cards on `surface`;

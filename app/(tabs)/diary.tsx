@@ -120,6 +120,29 @@ export default function DiaryScreen() {
           style={styles.writeBtn}
         />
 
+        {/* Trigger tracker (M2-05) — quick log of what set you off. */}
+        <Pressable
+          onPress={() => router.push("/diary/trigger")}
+          accessibilityRole="button"
+          accessibilityLabel="Log a trigger"
+          style={({ pressed }) => [
+            styles.triggerCard,
+            { backgroundColor: c.exGroundBg, borderColor: c.exGround },
+            pressed && { opacity: 0.85 },
+          ]}
+        >
+          <View style={[styles.triggerIcon, { backgroundColor: c.exGround }]}>
+            <MaterialCommunityIcons name="crosshairs-question" size={20} color={c.textInverse} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.triggerTitle, { color: c.exGround }]}>Log a trigger</Text>
+            <Text style={[styles.triggerBody, { color: c.text }]}>
+              Note what set you off — pattern insight starts here.
+            </Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={20} color={c.exGround} />
+        </Pressable>
+
         {/* Reflection prompts (S23) — distinct icon + kicker per card */}
         {prompts.length > 0 ? (
           <>
@@ -256,6 +279,24 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   body: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 96 },
   writeBtn: { marginBottom: 8 },
+  triggerCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 8,
+  },
+  triggerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  triggerTitle: { fontSize: 15, fontWeight: "800", lineHeight: 21 },
+  triggerBody: { marginTop: 2, fontSize: 13, lineHeight: 19, opacity: 0.9 },
   sectionTitle: {
     marginTop: 24,
     marginBottom: 8,

@@ -14,10 +14,10 @@ export default function ProfileIndexScreen() {
   return (
     <View style={[styles.root, { backgroundColor: c.bg }]}>
       <View style={styles.body}>
-        <Text variant="titleLarge" style={{ fontWeight: "700" }}>
+        <Text variant="titleLarge" style={{ fontWeight: "700", color: c.text }}>
           Profile
         </Text>
-        <Text variant="bodyMedium" style={[styles.muted, { marginTop: 8 }]}>
+        <Text variant="bodyMedium" style={[muted(c), { marginTop: 8 }]}>
           Research profile, settings, data export and privacy controls arrive in a later milestone.
         </Text>
       </View>
@@ -25,8 +25,9 @@ export default function ProfileIndexScreen() {
   );
 }
 
+const muted = (c: typeof colors.light) => ({ color: c.textMuted, opacity: 0.85 });
+
 const styles = StyleSheet.create({
   root: { flex: 1 },
   body: { padding: 20 },
-  muted: { color: "#5A5645", opacity: 0.85 },
 });

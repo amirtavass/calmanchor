@@ -2,6 +2,80 @@
 
 Append-only record of changes (decisions + progress). Newest first. Never edit or delete a past entry.
 
+## 2026-09-17 (3) — Toolkit PDF "Download interrupted" fixed (react-native-blob-util 0.24.10 bug)
+
+### Diagnosis
+- PDF URL verified healthy: `curl` returns `200`, `Content-Type: application/pdf`, `Content-Length: 2086821`,
+  full 2MB body in ~0.3 s (no redirects, no `Content-Encoding`, size matches exactly). So the server was
+  not the problem.
+- The error string **"Download interrupted."** is thrown from native
+  `ReactNativeBlobUtilReq.java:833` when `ReactNativeBlobUtilFileResp.isDownloadComplete()` is false
+  (bytes written ≠ `Content-Length`).
+- Root cause = **known bug in `react-native-blob-util@0.24.10` on Android** (upstream issues #481, #483,
+  #475): `ProgressReportingSource.read()` in `ReactNativeBlobUtilFileResp.java` reads from the response,
+  writes to the destination file, and returns the count — but **never writes the bytes into the Okio
+  `sink` Buffer it was handed**. That violates the Okio `Source` contract, so the buffered stream
+  terminates after the first read segment (~8 KB) → truncated file → `isDownloadComplete()` false →
+  "Download interrupted". Healthy servers and even iOS (separate implementation) are unaffected.
+
+### Fix
+- Patched `node_modules/react-native-blob-util/android/src/main/java/com/ReactNativeBlobUtil/Response/ReactNativeBlobUtilFileResp.java`
+  to add `sink.write(bytes, 0, (int) read);` after the file write — the same production-verified fix the
+  maintainers/community use (issue #481).
+- Made it persistent with **`patch-package`** (added as devDependency ^8.0.1):
+  `patches/react-native-blob-util+0.24.10.patch` + `"postinstall": "patch-package"` so `npm install`
+  re-applies it automatically.
+- Verified the patch file content + `sink.write` present in node_modules; `npx tsc --noEmit` EXIT 0.
+
+### ⚠️ Requires a native rebuild
+The change is in **Java**, so a Metro reload won't pick it up. Rebuild the dev client:
+`npx eas build --profile development --platform android`, install the new APK, then
+`npx expo start --dev-client`. (Same requirement as before: `react-native-pdf`/`react-native-blob-util`
+are not in Expo Go.)
+
+## 2026-09-17 (2) — M2 remaining work: Toolkit (M2-01) + Trigger tracker (M2-05) + docs + QA pass
+
+### Toolkit (`app/(tabs)/toolkit.tsx`) — M2-01
+- **Contents/Read segmented control** (`M3Chip`). Contents is the landing view.
+- **Chapter list from `getChapters()`** (20 rows), grouped by `content_group`
+  (learn/practice/reflect/reframe/relationships/crisis) with a small-caps header + count; each row
+  is a `surface` card with a 34 dp number medallion in the group's `--ex-*` pair, title 15/600,
+  `p. {page_range}` supporting text, and a trailing `Open ›` in the group colour.
+- **Jump-to-page**: tapping a chapter parses the first number of `page_range`, sets the `Pdf`
+  `page` prop (fresh mount) and calls `pdfRef.setPage()` (already-mounted), then switches to Read.
+  Read view has a mini-toolbar (`‹ Contents` · `Page X of Y` · `Reload`).
+- **Loading**: `ChaptersSkeleton` (grouped shimmer rows, design-system §17). Error/empty states
+  with inline retry (empty hints at `npm run seed`).
+- `react-native-pdf`'s `PdfRef.setPage(pageNumber)` API verified from its `.d.ts`.
+
+### Trigger tracker (`app/diary/trigger.tsx`) — M2-05
+- New Diary-stack route + a **"Log a trigger" card** on the Diary landing
+  (`exGroundBg`/`exGround`, `crosshairs-question`, chevron → `/diary/trigger`).
+- Compose screen: info badge ("Noticing what triggers you… nothing here is judged"), required
+  trigger-name TextInput (`autoFocus`) → `checkins.triggers[0]`, optional `ns_state` picker
+  (window/hyper/hypo) and `survival_response` picker (fight/flight/freeze/fawn) as colour-field
+  chips, optional note, pinned **Save trigger** (`secondary`). Saves via the existing
+  `saveCheckin()` (browse-first, sign-in prompted at save — S01). KAV + `automaticallyAdjustKeyboardInsets`.
+- Trigger rows land in `checkins` — the same table the M3 pattern charts read from.
+
+### Docs (M2-11 / M2-12)
+- `docs/ui/sections/toolkit/00-toolkit.md` (new) — ASCII + decisions + craft cross-check.
+- `docs/ui/sections/diary/00-journal.md` — added trigger-log story + §4 (renumbered) + data note.
+- `docs/ui/README.md` — toolkit + diary-trigger now listed as shipped; planned list trimmed.
+- `docs/ui/02-routing-map.md` — `diary/trigger` route + toolkit row + §5 file reality updated.
+- **M2-11** marked DONE (IA §3 covers all 8 screens), **M2-12** marked DONE (home/diary/toolkit ASCII + skeleton/error/empty states).
+
+### M2-06 code-level QA pass
+- Safe-area insets on every header/scroll screen; KAV + keyboard-inset handling on all compose
+  screens; back via `router.back()` + system back on pushed routes (root `_layout.tsx` already has
+  ThemeProvider + PaperProvider + StatusBar + modal/card presentations).
+- **Removed hardcoded `#5A5645` muted hexes** from `app/crisis/index.tsx`, `app/profile/index.tsx`,
+  `app/(tabs)/portfolio.tsx` → token `textMuted` (they were invisible-wrong in dark mode).
+- **Device QA still required** for full M2 acceptance (Android demo-ready; iOS needs device).
+
+### Verification
+- `npx tsc --noEmit` EXIT 0 · `npx expo export --platform android` bundles (4.2 MB hbc).
+
 ## 2026-09-17 — Dashboard greeting moved to top + per-mode warm-gold bg
 
 ### Dashboard (`app/(tabs)/index.tsx`)

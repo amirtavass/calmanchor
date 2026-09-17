@@ -144,7 +144,9 @@ it into `components/`, delete the duplicate, and add it to §2 above.**
 | **Exercise loading screen** | exercise detail / session | full-screen skeleton mirroring the live detail layout (category chip → headline → meta row → description panel → steps list → CTA). Same ScreenHeader, same bg, so the transition into the live screen is invisible. |
 | **Weekly window chart** | home §11 | 7 bars in a 56dp row, gap 8, `alignItems: flex-end`; per-day `--ns-*` fill, today is dashed-border (no fill) at the current day's slot height; legend below |
 | **Warm reminder card** | home below CTA | `exSelfkindBg` 14 dp radius row, 40 dp `exSelfkind` medallion, title 15/800 + body 13/19 0.9, trailing chevron → relevant action |
-| **Info badge** | diary/new | tinted row: `--*-bg` background, 12 dp radius, 10 dp vertical padding, `information-outline` glyph 14 + text 12.5/18/700 in `--*`. Use for notices the user must see (e.g. "optional") |
+| **Info badge** | diary/new + trigger | tinted row: `--*-bg` background, 12 dp radius, 10 dp vertical padding, glyph 14 + text 12.5/18/700 in `--*`. Use for notices the user must see (e.g. "optional", "nothing here is judged") |
+| **Grouped chapter list** | toolkit Contents | rows grouped under small-caps `--*-fg` headers + count; each row = `surface` card, 34 dp number medallion in the group's `--ex-*` pair, title 15/600 + `p. range` 12.5/500, trailing `Open ›` in the group colour. Tap → jump action. |
+| **Colour-field picker** | diary/trigger | row of `--*-bg` chips (1 dp `--*` border); selected = solid `--*` fill + `textInverse` icon/label + 2 dp ring. Used for the optional ns_state / survival_response pickers. Icon carries meaning so colour is never the only cue (R7). |
 | **Breathing ring** | session steps | 180dp wrap; 112dp ring (2dp `--ex-*` border, `--*-bg` fill, glyph 44) + absolute halo; scale 1→1.045 (4s) and halo 1→1.65 / 0.4→0 (3s) |
 | **Full-bleed chip scroller** | landing states | horizontal `ScrollView`, `marginHorizontal: -16` + content `paddingHorizontal: 16`, gap 8 |
 

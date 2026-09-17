@@ -1,0 +1,17 @@
+diff --git a/node_modules/react-native-blob-util/android/src/main/java/com/ReactNativeBlobUtil/Response/ReactNativeBlobUtilFileResp.java b/node_modules/react-native-blob-util/android/src/main/java/com/ReactNativeBlobUtil/Response/ReactNativeBlobUtilFileResp.java
+index ccceaf1..48ce9be 100644
+--- a/node_modules/react-native-blob-util/android/src/main/java/com/ReactNativeBlobUtil/Response/ReactNativeBlobUtilFileResp.java
++++ b/node_modules/react-native-blob-util/android/src/main/java/com/ReactNativeBlobUtil/Response/ReactNativeBlobUtilFileResp.java
+@@ -123,6 +123,12 @@ public class ReactNativeBlobUtilFileResp extends ResponseBody {
+                 bytesDownloaded += read > 0 ? read : 0;
+                 if (read > 0) {
+                     ofStream.write(bytes, 0, (int) read);
++                    // Fix (issues #481/#483): also write into the Okio sink we were
++                    // handed. Without this the Source contract is violated (returns
++                    // N bytes but writes none into sink), so the buffered stream
++                    // terminates after the first segment and FileStorage downloads
++                    // truncate + reject with "Download interrupted."
++                    sink.write(bytes, 0, (int) read);
+                 } else if (contentLength() == -1 && read == -1) {
+                     // End marker has been received for chunked download
+                     isEndMarkerReceived = true;

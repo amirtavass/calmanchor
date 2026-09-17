@@ -35,6 +35,7 @@ app/
 │
 ├─ diary/                         (stack)
 │  ├─ new.tsx                     Compose entry (optional prompt + body)
+│  ├─ trigger.tsx                 Log a trigger (name + optional state/response/note → checkin)
 │  └─ [id].tsx                    View / edit (within window) / delete
 │
 ├─ profile/                       (stack, pushed over tabs from header avatar)
@@ -55,7 +56,7 @@ app/
 | Section | What the user does | Route | Data call (`lib/db.ts`) | Milestone |
 |---|---|---|---|---|
 | **Home / Dashboard** | Greeting + date, stat cards (Sessions real, Streak/Window M3), today's plan, quick relief tiles, recent activity | `(tabs)/index.tsx` | `getSessions()`, `getJournalEntries()` (recent); `saveCheckin()`/`getCheckins()` in M3 | M2 shell / M3 data |
-| **Toolkit** | Browse 20 chapters, open workbook PDF, jump to a chapter | `(tabs)/toolkit.tsx` | `getChapters()`, `lib/toolkit.ts` (`TOOLKIT_URL`) | M2 (PDF already works) |
+| **Toolkit** | Browse 20 chapters (grouped by content group), open workbook PDF, tap chapter → jump to its page | `(tabs)/toolkit.tsx` (Contents/Read) | `getChapters()`, `lib/toolkit.ts` (`TOOLKIT_URL`), `pdfRef.setPage()` | M2 (shipped) |
 | **Exercises** | Browse by 6 categories, open an exercise's steps, start a session | `(tabs)/exercises.tsx` → `exercise/[id]` | `getAllExercises()`, `getExercisesByCategory()` | M2 |
 | **Diary** | See 3 prompts, write/view/edit/delete entries, tag them | `(tabs)/diary.tsx` → `diary/new` → `diary/[id]` | `getJournalEntries()`, `saveJournalEntry()`, `updateJournalEntry()`, `setJournalEntryTags()`, `getPrompts()`, `deleteJournalEntry()` | M2 |
 | **Portfolio** | Favourited exercises, safe-space notes, custom strategies | `(tabs)/portfolio.tsx` | (M3 tables: favourites, safe_space_notes, custom_strategies) | M3 placeholder |
@@ -71,6 +72,7 @@ app/
 | `exercise/[id].tsx` | Show exercise title/category/steps/duration; "Start" button | `getAllExercises()` (filter id) | M2 |
 | `exercise/session/[id].tsx` | Guided session: step-by-step timer → distress_before → do → distress_after → helpfulness → note → confirm → save | `saveSession()` (`exercise_sessions` + distress/helpfulness) | M2 |
 | `diary/new.tsx` | Optional prompt (from `prompts`, S23) + free-text body; save; sign-in at save (S01) | `saveJournalEntry()`, `getPrompts()` | M2 |
+| `diary/trigger.tsx` | Log a trigger (name + optional ns_state/survival_response/note) → checkin; sign-in at save (S01) | `saveCheckin()` | M2 (M2-05) |
 | `diary/[id].tsx` | View entry; edit within limited window (S21); delete single (S22) | `getJournalEntries()`, `updateJournalEntry()`, `deleteJournalEntry()` | M2 |
 | `profile/index.tsx` | Research profile fields (S03), prefer-not-to-say | `getCurrentProfile()`, `saveProfile()` | M3 |
 | `profile/settings.tsx` | Theme toggle, font size, etc. | `settings` table | M3 |
@@ -94,12 +96,12 @@ app/
 | Path | Status |
 |---|---|
 | `app/_layout.tsx` | EXISTS — ThemeProvider + Stack + StatusBar |
-| `app/toolkit.tsx` | MOVED to `(tabs)/toolkit.tsx` — chapter list + PDF wiring next |
+| `(tabs)/toolkit.tsx` | EXISTS — Contents/Read, chapter list → `setPage()` jump (M2-01) |
 | `(tabs)/index.tsx` | EXISTS — Home = dashboard (§21 Composite 1) |
 | `(tabs)/_layout.tsx` | EXISTS — Tabs navigator + CrisisFab overlay |
 | `(tabs)/exercises.tsx`, `diary.tsx` | EXISTS — shipped (M2) |
 | `(tabs)/portfolio.tsx` | EXISTS — M3 placeholder |
-| `diary/new.tsx`, `diary/[id].tsx` | EXISTS — compose + detail (S19–S24) |
+| `diary/new.tsx`, `diary/trigger.tsx`, `diary/[id].tsx` | EXISTS — compose + trigger log + detail |
 | `crisis/*`, `exercise/*`, `profile/*`, `onboarding/*` | EXISTS (crisis/exercise) · profile/onboarding M3 |
 
 > This map is the routing skeleton. The visual refinement (layout of each screen) is the separate

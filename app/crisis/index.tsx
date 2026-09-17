@@ -19,31 +19,33 @@ export default function CrisisIndexScreen() {
         <Button icon="close" onPress={() => router.back()} mode="text">
           Close
         </Button>
-        <Text variant="titleMedium" style={{ fontWeight: "700" }}>
+        <Text variant="titleMedium" style={{ fontWeight: "700", color: c.text }}>
           Crisis help
         </Text>
         <View style={{ width: 64 }} />
       </View>
       <View style={styles.body}>
-        <Text variant="titleLarge" style={{ fontWeight: "700", marginBottom: 8 }}>
+        <Text variant="titleLarge" style={{ fontWeight: "700", color: c.text, marginBottom: 8 }}>
           Take a moment.
         </Text>
-        <Text variant="bodyMedium" style={[styles.muted, { marginBottom: 20 }]}>
+        <Text variant="bodyMedium" style={[muted(c), { marginBottom: 20 }]}>
           Grounding, breathing and your quick reset are one tap away.
         </Text>
-        <Button mode="contained" style={styles.btn} onPress={() => router.back()}>
+        <Button mode="contained" buttonColor={c.secondaryActive} textColor={c.textInverse} style={styles.btn} onPress={() => router.back()}>
           Ground — 5-4-3-2-1
         </Button>
-        <Button mode="contained" style={styles.btn} onPress={() => router.back()}>
+        <Button mode="contained" buttonColor={c.secondaryActive} textColor={c.textInverse} style={styles.btn} onPress={() => router.back()}>
           Breathe — box breathing
         </Button>
-        <Text variant="bodySmall" style={[styles.muted, { marginTop: 24 }]}>
+        <Text variant="bodySmall" style={[muted(c), { marginTop: 24 }]}>
           UK: Samaritans 116 123 · Shout 85258 · NHS 111
         </Text>
       </View>
     </View>
   );
 }
+
+const muted = (c: typeof colors.light) => ({ color: c.textMuted, opacity: 0.85 });
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
@@ -55,6 +57,5 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   body: { padding: 20 },
-  muted: { color: "#5A5645", opacity: 0.85 },
   btn: { borderRadius: 12, marginBottom: 12 },
 });

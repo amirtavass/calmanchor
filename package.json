@@ -32,6 +32,8 @@
     "@types/node": "^26.3.0",
     "@types/react": "~19.2.2",
     "@types/react-native-vector-icons": "^6.4.18",
+    "eas-cli": "^14.7.1",
+    "patch-package": "^8.0.1",
     "postgres": "^3.4.5",
     "ts-node": "^10.9.2",
     "typescript": "~6.0.3"
@@ -43,7 +45,8 @@
     "web": "expo start --web",
     "verify": "ts-node services/verify-schema.ts",
     "verify:rls": "ts-node services/verify-schema.ts --rls",
-    "personas": "ts-node services/personas.ts"
+    "personas": "ts-node services/personas.ts",
+    "postinstall": "patch-package"
   },
   "private": true
 }

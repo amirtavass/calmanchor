@@ -15,7 +15,7 @@ export default function PortfolioScreen() {
     <View style={[styles.root, { backgroundColor: c.bg }]}>
       <ScreenHeader title="Portfolio" subtitle="Your personal toolkit" />
       <View style={styles.body}>
-        <Text variant="bodyMedium" style={styles.muted}>
+        <Text variant="bodyMedium" style={muted(c)}>
           Favourited exercises and personal strategies will appear here (coming in a later milestone).
         </Text>
       </View>
@@ -23,8 +23,9 @@ export default function PortfolioScreen() {
   );
 }
 
+const muted = (c: typeof colors.light) => ({ color: c.textMuted, opacity: 0.85 });
+
 const styles = StyleSheet.create({
   root: { flex: 1 },
   body: { padding: 16 },
-  muted: { color: "#5A5645", opacity: 0.85 },
 });
