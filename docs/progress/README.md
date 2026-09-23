@@ -21,6 +21,7 @@ one concern per file, stable IDs, append-only registers. Never rewrite history â
 | [`milestones/m4-store-readiness.md`](milestones/m4-store-readiness.md) | M4 task register (Store Readiness). |
 | [`06-changelog.md`](06-changelog.md) | Append-only record of changes (decisions + progress). |
 | [`07-questions-for-aamir.md`](07-questions-for-aamir.md) | Open questions / supervision items. |
+| [`08-live-data-and-auth-wiring.md`](08-live-data-and-auth-wiring.md) | Design & step plan: make the app read real Supabase data (dashboard) + visible live Google sign-in. Design-only for now. |
 
 (`02â€“05` are reserved to mirror the schema-coaching numbering; the schema-coaching pack owns stories, so they are not recreated here.)
 

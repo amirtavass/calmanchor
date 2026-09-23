@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { Text } from "react-native-paper";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
@@ -6,7 +7,10 @@ import { useRouter } from "expo-router";
 import ScreenHeader from "../../components/ScreenHeader";
 import M3Button from "../../components/M3Button";
 import M3Card from "../../components/M3Card";
-import { getSessions, getJournalEntries } from "../../lib/db";
+import LockedAccessCard from "../../components/LockedAccessCard";
+import { useSignInGate } from "../../components/SignInPrompt";
+import { getSessions, getJournalEntries, getCurrentUser, getResearchProfile } from "../../lib/db";
+import { useSession } from "../../lib/auth";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { colors } from "../../theme/tokens";
 
@@ -19,18 +23,45 @@ import { colors } from "../../theme/tokens";
  * a bespoke header — so the day opens with a personal anchor. `ThemeToggle`
  * on the right of the ScreenHeader is the only top-right action (avatar
  * removed; profile access is reached through the greeting card's chevron).
+ *
+ * The greeting name comes from the `users` table (28 Aug §5 — identity lives
+ * on a separate table), read via `getCurrentUser()`; never hardcoded.
  */
 export default function HomeScreen() {
   const router = useRouter();
   const { mode } = useAppTheme();
   const c = colors[mode];
 
+  const { userId, signedIn } = useSession();
+  const { gate, prompt } = useSignInGate();
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [needsResearchProfile, setNeedsResearchProfile] = useState(false);
   const [sessionCount, setSessionCount] = useState<number | null>(null);
   const [recentSession, setRecentSession] = useState<SessionRow | null>(null);
   const [recentEntry, setRecentEntry] = useState<EntryRow | null>(null);
 
   useEffect(() => {
+    if (!signedIn) {
+      setDisplayName(null);
+      setNeedsResearchProfile(false);
+      setSessionCount(null);
+      setRecentSession(null);
+      setRecentEntry(null);
+      return;
+    }
     (async () => {
+      try {
+        const u = await getCurrentUser();
+        setDisplayName(u?.display_name ?? null);
+      } catch {
+        // Identity read is non-critical — greeting falls back to "there".
+      }
+      try {
+        const p = await getResearchProfile();
+        setNeedsResearchProfile(p === null);
+      } catch {
+        // Non-critical — don't nag if we can't confirm.
+      }
       try {
         const s = await getSessions();
         setSessionCount(s?.length ?? 0);
@@ -45,7 +76,7 @@ export default function HomeScreen() {
         // Not signed in — recent journal stays hidden.
       }
     })();
-  }, []);
+  }, [signedIn, userId]);
 
   const now = new Date();
   const dateLabel = now.toLocaleDateString("en-GB", {
@@ -95,9 +126,13 @@ export default function HomeScreen() {
   const daysInWindow = thisWeek.filter((d) => d.state === "window").length;
   const inWindowPct = Math.round((daysInWindow / 6) * 100);
 
+  if (!signedIn) {
+    return <SignedOutHome onSignIn={() => gate(() => undefined)} prompt={prompt} />;
+  }
+
   return (
     <View style={[styles.root, { backgroundColor: c.bg }]}>
-      {/* Zone 1 · ScreenHeader — ThemeToggle only (avatar removed). */}
+      {/* Zone 1 · ScreenHeader — signed-in profile action + ThemeToggle. */}
       <ScreenHeader title="Calm Anchor" />
 
       {/* Zone 2 · content */}
@@ -112,7 +147,7 @@ export default function HomeScreen() {
           ]}
           onPress={() => router.push("/profile/index")}
           accessibilityRole="button"
-          accessibilityLabel={`${greeting}, Amir. Open profile.`}
+          accessibilityLabel={`${greeting}, ${displayName ?? "there"}. Open profile.`}
         >
           <View
             style={[
@@ -136,7 +171,7 @@ export default function HomeScreen() {
               {dateLabel.toUpperCase()}
             </Text>
             <Text style={[styles.greetingHeadline, { color: c.text }]}>
-              {greeting}, Amir
+              {greeting}, {displayName ?? "there"}
             </Text>
             <Text
               style={[
@@ -347,6 +382,31 @@ export default function HomeScreen() {
           </>
         ) : null}
 
+        {/* A5 research-profile nudge — first sign-in only (28 Aug §6: five
+            optional questions, asked once). Sits below recent activity so the
+            day's stats stay above the fold. */}
+        {signedIn && needsResearchProfile ? (
+          <Pressable
+            style={[styles.researchCard, { backgroundColor: c.exJournalBg }]}
+            onPress={() => router.push("/profile/questions")}
+            accessibilityRole="button"
+            accessibilityLabel="Answer a few optional research questions"
+          >
+            <View style={[styles.researchIcon, { backgroundColor: c.exJournal }]}>
+              <MaterialCommunityIcons name="account-heart-outline" size={20} color={c.textInverse} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.researchTitle, { color: c.exJournal }]}>
+                Help us understand
+              </Text>
+              <Text style={[styles.researchBody, { color: c.text }]}>
+                Five optional questions, asked once — skip any or all.
+              </Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={20} color={c.exJournal} />
+          </Pressable>
+        ) : null}
+
         {/* CTA — secondary tone (warm olive) instead of loud primary green. */}
         <M3Button
           label="Start today's session"
@@ -378,6 +438,84 @@ export default function HomeScreen() {
           <MaterialCommunityIcons name="chevron-right" size={20} color={c.exSelfkind} />
         </Pressable>
       </ScrollView>
+    </View>
+  );
+}
+
+function SignedOutHome({ onSignIn, prompt }: { onSignIn: () => void; prompt: ReactNode }) {
+  const router = useRouter();
+  const { mode } = useAppTheme();
+  const c = colors[mode];
+
+  const publicActions = [
+    { label: "Breathe", detail: "Public", icon: "weather-windy" as const, fg: c.exBreath, bg: c.exBreathBg, route: "/exercise/category/breathing" },
+    { label: "Ground", detail: "Public", icon: "leaf" as const, fg: c.exGround, bg: c.exGroundBg, route: "/exercise/category/sensory" },
+    { label: "Toolkit", detail: "10 pages free", icon: "book-open-variant" as const, fg: c.exBreath, bg: c.exBreathBg, route: "/(tabs)/toolkit" },
+    { label: "Crisis", detail: "Always open", icon: "lifebuoy" as const, fg: c.exCrisis, bg: c.exCrisisBg, route: "/crisis/index" },
+  ];
+
+  return (
+    <View style={[styles.root, { backgroundColor: c.bg }]}>
+      <ScreenHeader title="Calm Anchor" />
+      <ScrollView contentContainerStyle={styles.body}>
+        <M3Card fill={c.surface} style={styles.signedOutHero}>
+          <View style={[styles.signedOutIcon, { backgroundColor: c.secondaryTint }]}>
+            <MaterialCommunityIcons name="anchor" size={28} color={c.secondary} />
+          </View>
+          <Text style={[styles.signedOutTitle, { color: c.text }]}>A calm place to begin</Text>
+          <Text style={[styles.signedOutBody, { color: c.textMuted }]}>Explore grounding, breathing and nervous-system exercises at your own pace.</Text>
+          <M3Button label="Sign in with Google" icon="google" color={c.secondaryActive} onPress={onSignIn} />
+          <Text style={[styles.signedOutNote, { color: c.textMuted }]}>You can browse without an account. Sign in when you want to save sessions, journal entries or progress.</Text>
+        </M3Card>
+
+        <Text style={[styles.sectionTitle, { color: c.text }]}>Start here</Text>
+        <View style={styles.grid}>
+          {publicActions.map((action) => (
+            <View key={action.label} style={styles.tile}>
+              <M3Card fill={action.bg} onPress={() => router.push(action.route as never)}>
+                <MaterialCommunityIcons name={action.icon} size={26} color={action.fg} />
+                <Text style={[styles.tileLabel, { color: action.fg }]}>{action.label}</Text>
+                <Text style={[styles.tileDetail, { color: c.textMuted }]}>{action.detail}</Text>
+              </M3Card>
+            </View>
+          ))}
+        </View>
+
+        <Text style={[styles.sectionTitle, { color: c.text }]}>Your progress</Text>
+        <LockedAccessCard
+          title="Sign in to save your progress"
+          message="Your private sessions, reflections and check-ins will appear here after you sign in."
+          onSignIn={onSignIn}
+        />
+
+        <Text style={[styles.sectionTitle, { color: c.text }]}>What sign-in unlocks</Text>
+        <M3Card fill={c.surfaceOffset2}>
+          {[
+            "Full Toolkit PDF",
+            "Saved exercise sessions",
+            "Private diary and triggers",
+            "Personal progress and check-ins",
+          ].map((item, index) => (
+            <View key={item} style={[styles.unlockRow, index > 0 ? styles.unlockBorder : null, { borderBottomColor: c.divider }]}>
+              <View style={[styles.unlockIcon, { backgroundColor: c.surfaceOffset }]}>
+                <MaterialCommunityIcons name="lock-outline" size={18} color={c.textMuted} />
+              </View>
+              <Text style={[styles.unlockText, { color: c.text }]}>{item}</Text>
+            </View>
+          ))}
+        </M3Card>
+
+        <M3Button
+          label="Browse exercises"
+          icon="arrow-right"
+          iconRight
+          variant="outlined"
+          color={c.secondary}
+          onPress={() => router.push("/(tabs)/exercises")}
+          style={styles.browseButton}
+        />
+      </ScrollView>
+      {prompt}
     </View>
   );
 }
@@ -424,6 +562,30 @@ const styles = StyleSheet.create({
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   tile: { width: "48%", flexGrow: 1 },
   tileLabel: { marginTop: 8, fontSize: 16, lineHeight: 24, fontWeight: "700" },
+  tileDetail: { marginTop: 2, fontSize: 12, lineHeight: 16, fontWeight: "500" },
+  signedOutHero: { marginTop: 4 },
+  signedOutIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+  },
+  signedOutTitle: { fontSize: 22, lineHeight: 28, fontWeight: "800" },
+  signedOutBody: { marginTop: 8, fontSize: 14, lineHeight: 21, marginBottom: 18 },
+  signedOutNote: { marginTop: 12, fontSize: 13, lineHeight: 19 },
+  unlockRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 },
+  unlockBorder: { borderTopWidth: StyleSheet.hairlineWidth },
+  unlockIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  unlockText: { flex: 1, fontSize: 14.5, lineHeight: 21 },
+  browseButton: { alignSelf: "stretch", marginTop: 20 },
   activityRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -485,6 +647,23 @@ const styles = StyleSheet.create({
   },
   reminderTitle: { fontSize: 15, fontWeight: "800", lineHeight: 21 },
   reminderBody: { marginTop: 2, fontSize: 13, lineHeight: 19, opacity: 0.9 },
+  researchCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 14,
+  },
+  researchIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  researchTitle: { fontSize: 14, fontWeight: "800", lineHeight: 20 },
+  researchBody: { marginTop: 2, fontSize: 13, lineHeight: 19 },
 
   // --- Greeting card (anchored at the top of the dashboard) ---------------
   greetingCard: {

@@ -16,6 +16,7 @@ import M3Button from "../../../components/M3Button";
 import M3Card from "../../../components/M3Card";
 import ExerciseLoadingScreen from "../../../components/ExerciseLoadingScreen";
 import M3Scale, { moodBandKey } from "../../../components/M3Scale";
+import { useSignInGate } from "../../../components/SignInPrompt";
 import { getAllExercises, saveCheckin, saveSession } from "../../../lib/db";
 import {
   CATEGORIES,
@@ -90,6 +91,14 @@ export default function SessionScreen() {
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const [checkinSaved, setCheckinSaved] = useState(false);
   const [finishedAt, setFinishedAt] = useState<Date | null>(null);
+
+  // A4: sign-in gate at save (S01). The user is usually signed in already (the
+  // gate fires at "Start exercise"), but this guards the save + post-session
+  // check-in against a mid-flow session drop with a soft card, not a throw.
+  const { gate: gateSave, prompt: signInPrompt } = useSignInGate({
+    message:
+      "Sign in with Google to save this session — your history stays private to your account.",
+  });
 
   const startedAt = useMemo(() => new Date(), []);
 
@@ -285,6 +294,8 @@ export default function SessionScreen() {
       >
         {nav}
       </View>
+
+      {signInPrompt}
     </KeyboardAvoidingView>
   );
 
@@ -615,7 +626,7 @@ export default function SessionScreen() {
               icon="check"
               iconRight
               color={c.secondaryActive}
-              onPress={handleSave}
+              onPress={() => gateSave(() => void handleSave())}
               disabled={saving}
               style={{ flex: 1.3 }}
             />
@@ -644,7 +655,7 @@ export default function SessionScreen() {
                 <M3Card
                   key={s.key}
                   fill={c[s.bg]}
-                  onPress={() => onCheckin(s)}
+                  onPress={() => gateSave(() => void onCheckin(s))}
                   style={[
                     styles.checkCard,
                     selectedState === s.key ? { borderWidth: 2, borderColor: c[s.fg] } : null,

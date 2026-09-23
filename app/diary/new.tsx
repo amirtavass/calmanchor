@@ -12,6 +12,7 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import M3Button from "../../components/M3Button";
+import { useSignInGate } from "../../components/SignInPrompt";
 import { getPrompts, saveJournalEntry } from "../../lib/db";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { colors } from "../../theme/tokens";
@@ -45,6 +46,12 @@ export default function NewEntryScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState<boolean>(true);
+
+  // A4: sign-in gate at save (S01). Writing an entry is a user-scoped action —
+  // the soft card prompts Google sign-in instead of a throw.
+  const { gate: gateSave, prompt: signInPrompt } = useSignInGate({
+    message: "Sign in with Google to save your entry — your journal stays private to your account.",
+  });
 
   useEffect(() => {
     (async () => {
@@ -243,13 +250,14 @@ export default function NewEntryScreen() {
           iconRight
           color={c.secondary}
           disabled={!body.trim() || saving}
-          onPress={save}
+          onPress={() => gateSave(() => void save())}
           style={{ flex: 1.3 }}
         />
       </View>
       {error ? (
         <Text style={[styles.errorText, { color: c.error }]}>Couldn't save: {error}</Text>
       ) : null}
+      {signInPrompt}
     </KeyboardAvoidingView>
   );
 }

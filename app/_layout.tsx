@@ -13,10 +13,12 @@ function RootNavigator() {
       <StatusBar style={mode === "dark" ? "light" : "dark"} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
         <Stack.Screen name="exercise" options={{ headerShown: false }} />
         <Stack.Screen name="diary" options={{ headerShown: false }} />
         <Stack.Screen name="crisis/index" options={{ presentation: "fullScreenModal" }} />
         <Stack.Screen name="profile/index" options={{ presentation: "card" }} />
+        <Stack.Screen name="profile/questions" options={{ presentation: "card" }} />
       </Stack>
     </PaperProvider>
   );

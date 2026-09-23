@@ -6,6 +6,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import M3Button from "../../components/M3Button";
 import ExerciseLoadingScreen from "../../components/ExerciseLoadingScreen";
+import { useSignInGate } from "../../components/SignInPrompt";
 import { getAllExercises } from "../../lib/db";
 import {
   CATEGORIES,
@@ -45,6 +46,13 @@ export default function ExerciseDetailScreen() {
   const [exercise, setExercise] = useState<Exercise | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // A4: sign-in gate at the first exercise attempt (S01; 28 Aug §6). Tapping
+  // "Start exercise" when signed out shows the soft card instead of a throw.
+  const { gate: gateStart, prompt: signInPrompt, signedIn } = useSignInGate({
+    message:
+      "Sign in with Google to log your session and keep it in your history. You can browse freely either way.",
+  });
 
   useEffect(() => {
     (async () => {
@@ -175,19 +183,22 @@ export default function ExerciseDetailScreen() {
         ]}
       >
         <View style={styles.signinRow}>
-          <MaterialCommunityIcons name="lock-outline" size={14} color={c.textMuted} />
+          <MaterialCommunityIcons name={signedIn ? "lock-check-outline" : "google"} size={14} color={c.textMuted} />
           <Text style={[styles.signinText, { color: c.textMuted }]}>
-            Sign-in is only needed to save — you can try it freely first.
+            {signedIn
+              ? "Your session will be saved to your history."
+              : "Sign-in saves your session to your history — you can read freely first."}
           </Text>
         </View>
         <M3Button
           label="Start exercise"
           icon="play"
           color={tone.fg}
-          onPress={() => router.push(`/exercise/session/${exercise.id}`)}
+          onPress={() => gateStart(() => router.push(`/exercise/session/${exercise.id}`))}
           style={styles.startBtn}
         />
       </View>
+      {signInPrompt}
     </View>
   );
 }

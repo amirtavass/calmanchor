@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import { ensureSignedIn } from "./auth";
+import { ensureSignedIn, getCurrentUserId } from "./auth";
 
 // ============================================================
 // TYPES
@@ -147,6 +147,27 @@ export async function getSessions() {
 // ============================================================
 // PROFILE (research fields — separately stored, never identity)
 // ============================================================
+/**
+ * Identity for the signed-in user, read from the `users` table (28 Aug §5 —
+ * identity lives on a separate table from research/behavioural data). Returns
+ * null when signed out or when the `users` row is missing. Non-prompting: this
+ * read never triggers the Google sign-in flow.
+ */
+export async function getCurrentUser(): Promise<{
+  display_name: string | null;
+  email: string | null;
+} | null> {
+  const userId = await getCurrentUserId();
+  if (!userId) return null;
+  const { data, error } = await supabase
+    .from("users")
+    .select("display_name, email")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ?? null;
+}
+
 export async function getCurrentProfile() {
   const userId = await ensureSignedIn();
   if (!userId) throw new Error("Sign-in required to view your profile");
@@ -157,6 +178,24 @@ export async function getCurrentProfile() {
     .single();
   if (error) throw error;
   return data;
+}
+
+/**
+ * Research profile for the signed-in user (S03). Returns the row, or `null`
+ * when signed out / no profile yet. **Non-prompting** — used by the dashboard
+ * to decide whether to show the first-sign-in research-questions prompt (A5,
+ * 28 Aug §6) without triggering Google sign-in.
+ */
+export async function getResearchProfile() {
+  const userId = await getCurrentUserId();
+  if (!userId) return null;
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, age_band, gender, ethnicity, treatment_status, referral_source")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ?? null;
 }
 
 export async function saveProfile(entry: ProfileInput) {

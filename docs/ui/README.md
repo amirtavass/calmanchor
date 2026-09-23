@@ -51,6 +51,7 @@ These apply to **every** screen and milestone. Do not re-derive their decisions 
 | File | Concern |
 |---|---|
 | [`00-dashboard.md`](sections/home/00-dashboard.md) | Home/dashboard — design-system §21 Composite 1 (greeting + date, stat cards, today's plan, quick actions, recent, CTA). |
+| [`01-auth-states.md`](sections/home/01-auth-states.md) | Design-only signed-out/signed-in Home states, 10-page Toolkit preview proposal, locked features, and signed-in account icon placement. |
 
 ### `sections/diary/` (M2, shipped)
 

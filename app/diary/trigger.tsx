@@ -6,6 +6,7 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import M3Button from "../../components/M3Button";
+import { useSignInGate } from "../../components/SignInPrompt";
 import { saveCheckin } from "../../lib/db";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { colors } from "../../theme/tokens";
@@ -46,6 +47,12 @@ export default function TriggerScreen() {
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // A4: sign-in gate at save (S01). Logging a trigger is user-scoped — the soft
+  // card prompts Google sign-in instead of a throw.
+  const { gate: gateSave, prompt: signInPrompt } = useSignInGate({
+    message: "Sign in with Google to save your trigger — it stays private to your account.",
+  });
 
   const save = async () => {
     if (!name.trim() || saving) return;
@@ -207,13 +214,14 @@ export default function TriggerScreen() {
           iconRight
           color={c.secondary}
           disabled={!name.trim() || saving}
-          onPress={save}
+          onPress={() => gateSave(() => void save())}
           style={{ flex: 1.3 }}
         />
       </View>
       {error ? (
         <Text style={[styles.errorText, { color: c.error }]}>Couldn't save: {error}</Text>
       ) : null}
+      {signInPrompt}
     </KeyboardAvoidingView>
   );
 }

@@ -2,6 +2,79 @@
 
 Append-only record of changes (decisions + progress). Newest first. Never edit or delete a past entry.
 
+## 2026-09-17 (7) — Phase A implemented: live Google sign-in + soft gate + research prompt
+
+Implemented Phase A of `docs/progress/08-live-data-and-auth-wiring.md` (design doc updated to
+reflect what shipped). All per the 28 Aug meeting (auth identity on `users` table §5; sign-up at
+first exercise attempt §6; five optional research questions §6).
+
+- **A1 — auth callback route** (`app/auth/callback.tsx`, registered in `app/_layout.tsx`):
+  resolves `calmanchor://auth/callback` → `supabase.auth.getSession()` → `router.replace("/(tabs)")`.
+  Closes the loop the old 20×500 ms poll handled; sign-in is now reliable on device.
+- **A2 — `useSession()` hook** (`lib/auth.ts`): subscribes to `onAuthStateChange`, returns
+  `{ session, userId, user, signedIn, loading }`. Screens now react to sign-in/out live (no manual
+  re-polling).
+- **A3 — identity from `users` table** (`getCurrentUser()` in `lib/db.ts`, non-prompting):
+  greeting card shows the real display name (was hardcoded `"Amir"`); `app/profile/index.tsx`
+  rebuilt — Google avatar (`user_metadata.picture`), display name + email, live sign-in/sign-out
+  controls, research-profile state card. Signed-out state is a clean sign-in card.
+- **A4 — soft sign-in gate** (`components/SignInPrompt.tsx` + `useSignInGate()` hook): replaces the
+  "throws" path with a friendly modal (Google medallion, supportive copy, "Not now" / "Sign in with
+  Google", busy state). Wired at: exercise detail "Start exercise", session save, post-session
+  check-in, journal save (`/diary/new`), trigger save (`/diary/trigger`). Crisis stays ungated (IA §3).
+- **A5 — research-profile prompt** (`app/profile/questions.tsx` + `getResearchProfile()` in
+  `lib/db.ts`): after first sign-in, the dashboard shows a gentle nudge card (→ questions) for the
+  five optional fields (age band, gender, ethnicity, treatment status, referral source), each with
+  "Prefer not to say", saved via existing `saveProfile()`. Asked once (row exists → prompt hides).
+- Verification: `npx tsc --noEmit` EXIT 0 · `npx expo export --platform android` bundles.
+- **Not done (Phase B/C pending)**: dashboard stats still read mock values (Sessions `"12"` fallback,
+  streak `5d`, `thisWeek` chart) — that is Phase B (M3-02/M3-03).
+
+## 2026-09-17 (6) — Live-data design doc revised against meeting notes
+
+Per request, re-checked `docs/progress/08-live-data-and-auth-wiring.md` against
+`C:\Users\Pc Dayan\Desktop\PROJECTS\Projects\CalmAnchorInternship\docs\Meetings.txt`
+(26 Aug, 28 Aug, 02 Sep) and `Milestones.txt` / `m3-full-feature-set.md`, leaning on the meetings.
+Changes to the doc:
+
+- **Added a "Meeting cross-check" table** (§3) — every step now cites its Aamir source.
+- **A3 changed**: identity display now reads `users.display_name` from the `users` table, not
+  `session.user.user_metadata` — matching 28 Aug §5 ("identity lives on a separate table from
+  research/behavioural data"). New `getCurrentUser()` in `lib/db.ts`.
+- **Added A5** (new): post-first-sign-in **research-profile prompt** — the five optional questions
+  (age band, gender, ethnicity, treatment status, referral source, "prefer not to say") from 28 Aug
+  §6; lightweight piece of onboarding, full 7-step stays M3-08.
+- **A4 clarified** to match 28 Aug §6: gate fires at the **first exercise attempt** (S01), soft card
+  instead of a throw; crisis stays ungated.
+- **Added B2 dependency**: the weekly window chart reads `checkins`, so it needs the **M3-02 daily
+  check-in card on Home** for real shape — sequenced before B1 stats.
+- **Design goal 4 tightened**: the only chart is the weekly window-of-tolerance state (§11, approved
+  in M2); explicitly not a mood/SUDS trend (S26 / 28 Aug §4).
+- Milestones said to be correct (per user): M3-03 stats/streak + M3-02 check-in card remain the
+  backbone; no schema/RLS/persona changes (02 Sep: DB hardening was done before UI, already 46/46).
+
+## 2026-09-17 (5) — Live-data + Google sign-in: design doc (no code)
+
+Design-only plan written per request — nothing implemented yet. File:
+`docs/progress/08-live-data-and-auth-wiring.md` (indexed in `docs/progress/README.md`).
+
+Key findings from the audit before writing it:
+- **The data layer is already live**: `lib/db.ts` calls real Supabase for every domain; there are
+  **no app-level mock functions**.
+- The **only mock values left** are on the dashboard (`app/(tabs)/index.tsx`): Sessions fallback
+  `"12"` (L163), Streak `"5d"` (L168), the weekly `thisWeek` array + `67%` in-window (L86–96), and
+  the hardcoded greeting name `"Amir"` (L139).
+- Auth (`lib/auth.ts`) works via Supabase Google OAuth + AsyncStorage session, but has **no
+  `app/auth/callback.tsx` route**, **no `onAuthStateChange` subscription**, and never displays the
+  Google profile in the UI.
+
+Plan (3 phases): **A** — visible/live Google sign-in (callback route, `useSession()` hook, profile
+name/avatar, sign-in/out controls, S01-friendly write gate); **B** — dashboard reads real data
+(`getDashboardStats()` from `exercise_sessions` + `checkins`, streak + weekly bars + in-window %,
+skeleton + signed-out states, generated types); **C** — verification (tsc, export, `npm run verify`
+46/46, on-device checklist). Non-goals kept: no M3-07 offline-first, no S03/portfolio, no trend
+visualisations (S26), no schema/RLS changes.
+
 ## 2026-09-17 (4) — Toolkit consistency pass + crisis wiring + screens-vs-stories audit
 
 ### Toolkit styling made consistent with the rest of the app

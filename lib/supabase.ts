@@ -12,5 +12,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+    // PKCE is the recommended RN flow: signInWithOAuth returns a URL carrying
+    // a code_challenge, and app/auth/callback.tsx exchanges the returned code
+    // for a session (tokens never appear in the deep-link URL).
+    flowType: "pkce",
   },
 });

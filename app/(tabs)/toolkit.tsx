@@ -7,7 +7,9 @@ import Pdf, { PdfRef } from "react-native-pdf";
 import ScreenHeader from "../../components/ScreenHeader";
 import M3Button from "../../components/M3Button";
 import M3Skeleton from "../../components/M3Skeleton";
+import { useSignInGate } from "../../components/SignInPrompt";
 import { getChapters } from "../../lib/db";
+import { useSession } from "../../lib/auth";
 import { toolkitSource } from "../../lib/toolkit";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { colors } from "../../theme/tokens";
@@ -41,6 +43,8 @@ const GROUP_LABELS: Record<string, string> = {
   crisis: "Crisis",
 };
 
+const SIGNED_OUT_PAGE_LIMIT = 10;
+
 /** First number in "1–6" → 1 (start page). */
 const startPageOf = (range: string) => {
   const m = range.match(/\d+/);
@@ -64,6 +68,11 @@ const startPageOf = (range: string) => {
 export default function ToolkitScreen() {
   const { mode } = useAppTheme();
   const c = colors[mode];
+  const { signedIn } = useSession();
+  const { gate, prompt } = useSignInGate({
+    title: "Continue with the full Toolkit",
+    message: "Sign in with Google to read the remaining pages and save your progress.",
+  });
 
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,12 +107,21 @@ export default function ToolkitScreen() {
     return Array.from(map.entries());
   }, [chapters]);
 
-  const openChapter = (ch: Chapter) => {
+  const openPage = (targetPage: number) => {
     // Jump via the imperative ref (native setNativePage) instead of the
     // controlled `page` prop — avoids the prop→componentDidUpdate→scrollToIndex
     // re-render loop that white-screens while swiping.
-    pdfRef.current?.setPage(startPageOf(ch.page_range));
+    pdfRef.current?.setPage(targetPage);
     setView("read");
+  };
+
+  const openChapter = (ch: Chapter) => {
+    const targetPage = startPageOf(ch.page_range);
+    if (!signedIn && targetPage > SIGNED_OUT_PAGE_LIMIT) {
+      gate(() => openPage(targetPage));
+      return;
+    }
+    openPage(targetPage);
   };
 
   const segmentBtn = (label: string, icon: MciGlyph, target: "contents" | "read") => {
@@ -143,9 +161,8 @@ export default function ToolkitScreen() {
             />
             <View style={[styles.pagePill, { backgroundColor: c.surface2 }]}>
               <MaterialCommunityIcons name="book-open-page-variant" size={14} color={c.textMuted} />
-              <Text style={[styles.pageText, { color: c.textMuted }]}>
-                Page {page}
-                {total ? ` of ${total}` : ""}
+              <Text style={[styles.pageText, { color: c.textMuted }]}>Page {signedIn ? page : Math.min(page, SIGNED_OUT_PAGE_LIMIT)}
+                {signedIn ? (total ? ` of ${total}` : "") : ` of ${Math.min(total || SIGNED_OUT_PAGE_LIMIT, SIGNED_OUT_PAGE_LIMIT)}`}
               </Text>
             </View>
             <Pressable
@@ -182,8 +199,14 @@ export default function ToolkitScreen() {
                 </View>
               )}
               onPageChanged={(p, t) => {
-                setPage(p);
                 setTotal(t);
+                if (!signedIn && p > SIGNED_OUT_PAGE_LIMIT) {
+                  setPage(SIGNED_OUT_PAGE_LIMIT);
+                  pdfRef.current?.setPage(SIGNED_OUT_PAGE_LIMIT);
+                  gate(() => openPage(p));
+                  return;
+                }
+                setPage(p);
               }}
               onError={(e) => setError(String(e))}
             />
@@ -269,6 +292,7 @@ export default function ToolkitScreen() {
           ) : null}
         </View>
       </View>
+      {prompt}
     </View>
   );
 }

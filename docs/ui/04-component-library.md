@@ -66,6 +66,13 @@ M3 filled card · radius 12 · content padding 16 · default fill `surfaceOffset
 | `onPress` | adds ripple + button role |
 | `style` | merged onto the card view (safe place for a selection border) |
 
+### `components/LockedAccessCard.tsx`
+Shared browse-first auth invitation used by Home and locked Toolkit access: `M3Card`
+with `surfaceOffset2` fill, 12dp radius, 16dp padding, 34dp `surfaceOffset` lock box,
+`lock-outline` at 18dp in `textMuted`, title 16/24/700, supporting copy 14/21, and a
+filled `M3Button` in `secondaryActive` with the `google` icon. Do not create a second
+locked-feature card with different icon, colour, or typography rules.
+
 ### `components/M3Scale.tsx`
 0–10 SUDS scale (S14/S15) — **the only slider in the app**; there is no native slider dependency.
 Gradient track of 11 `--mood-5…1` bands (14dp tall, radius 7) · 30dp white thumb with a 3dp band-coloured
@@ -80,7 +87,8 @@ Layout is fixed-height: choosing a value moves the thumb, never the page.
 
 ### `components/ScreenHeader.tsx`
 M3 small app bar for **tab screens only**: `surface` · `paddingTop: insets.top + 8` · minHeight 64 ·
-`titleLarge` weight 400 · `labelMedium` subtitle in `textMuted` · trailing avatar → `/profile`.
+`titleLarge` weight 400 · `labelMedium` subtitle in `textMuted` · signed-in account control before
+the ThemeToggle → `/profile`. Signed-out screens render the ThemeToggle without the account control.
 Props: `title`, `subtitle?`. Pushed screens use a hero or a quiet header instead (`03-screen-craft.md` §10).
 
 ---
@@ -138,7 +146,7 @@ it into `components/`, delete the duplicate, and add it to §2 above.**
 | **Tinted icon circle** | diary prompt/entry medallions | 34dp radius 10 `--*-bg` + glyph 18 in `--*` (prompt) · 40dp radius 12 (entry row) |
 | **Helpfulness tile** | session post | colour-field Pressable filled with the *strong* tone (e.g. `srFreeze`/`mood3`/`success`) + `textInverse` glyph 26 + label 13/800. Always-on 1 dp `text` border so it reads as interactive; selected = 2 dp `text` ring + outset shadow; 0.85 opacity on press. Three tiles share width via `flex: 1` + gap 10. **Never use the pastel `*-bg` variants here** — they read as a repeated near-white row against the surface panel. |
 | **Filled CTA — strong contrast** | session Save / Done / Review & save, dashboard CTA, diary Write/Save | `M3Button` filled with `secondaryActive` (#4A4230), `textInverse` label. `secondary` (#686040) is too low-contrast for label-on-fill on the cream canvas; reserve `secondary` for outlined buttons and quiet elements. |
-| **Theme toggle** | every screen header | small Pressable (`surface2` + `border`, 36 dp height, 18 radius), `weather-night`/`weather-sunny` MCI glyph in `secondary`, two-line `Theme · Light\|Dark` label. Cycles light ↔ dark. Avatar was removed from the header; profile access is reached through the dashboard greeting card's chevron. |
+| **Theme toggle** | every screen header | small Pressable (`surface2` + `border`, 36 dp height, 18 radius), `weather-night`/`weather-sunny` MCI glyph in `secondary`, two-line `Theme · Light\|Dark` label. Cycles light ↔ dark. Signed-in Home places the account control immediately before it; signed-out Home keeps only the toggle. |
 | **Skeleton placeholder** (`M3Skeleton`) | exercise detail / session / category / diary landing | direct lift of design-system §17. Interpolation between `surfaceOffset` and `surfaceDynamic` on the `shimmer` keyframes (1.5 s loop). Variants: `text` 14 dp, `text-multi` decreasing-width stack, `card` 120 dp, `avatar` 40 dp radius 999, `block` custom. Use `SkeletonTextStack` for the 100 / 80 / 60 % pattern. |
 | **Spinner** (`M3Spinner`) | inline progress (button loading, search) | direct lift of design-system §19. 16 dp circular border, 1 s linear spin. `tint` override (default `textMuted`); pair with filled buttons for save/load states. |
 | **Exercise loading screen** | exercise detail / session | full-screen skeleton mirroring the live detail layout (category chip → headline → meta row → description panel → steps list → CTA). Same ScreenHeader, same bg, so the transition into the live screen is invisible. |

@@ -3,8 +3,9 @@
 > **Route:** `app/(tabs)/index.tsx` · **M:** M2 (Home) / M3 (dashboard data) · **Source:** design-system §21
 > Composite 1 (approved by mentor) + `docs/ui/03-screen-craft.md`.
 > **Journey verticals:** Check-in · Do (quick relief) · Reflect (nudge) · Review (M3).
-> **Header:** uses `components/ScreenHeader.tsx` — the top-right carries `ThemeToggle` only
-> (avatar removed; profile access is reached through the dashboard greeting card's chevron).
+> **Header:** uses `components/ScreenHeader.tsx` — signed-in users also get a top-right
+> account icon that opens Profile. See [`01-auth-states.md`](01-auth-states.md) for the
+> signed-out/signed-in variants and the proposed 10-page Toolkit preview boundary.
 
 ## 1. The design (design-system §21 Composite 1 + §11 weekly chart + greeting card)
 
@@ -58,7 +59,7 @@
 | Date | Computed at render: `en-GB` weekday + day + month | Never hard-coded; updates daily. |
 | Window pill | Non-interactive pill: `warmGoldTint` bg + `warmGold` text + `star-four-points` | Design-system chip--selected gold; it is a *state indicator*, not a control — no M3Chip (needs onPress). |
 | Stats | Sessions = real count when signed in, falls back to `12`; Streak = `5d` (warning); In window = `67%` (success) | Engagement vs S26: descriptive only, no mood trend. Dummy values until M3 wires the real aggregator — numbers stay illustrative, never evaluative. |
-| Greeting card (top) | `warmGold` (light mode) / `warmGoldTint` (dark mode) bg + 48 dp inverse medallion with time-of-day glyph (`weather-sunset-up` / `white-balance-sunny` / `weather-night`) + uppercase date kicker (warmGoldTint / warmGold) + 22/800 headline ("Good morning|afternoon|evening, Amir") + one supportive sentence that swaps on time of day + `chevron-right` → `/profile` | Anchors the top of the day; replaces the removed header subtitle. Profile access moved here from the top-right avatar. The reflection sentence is descriptive only — no evaluation, no mood trend (S26). The medallion and accent flip per mode so the card is always readable on its background. |
+| Greeting card (top) | `warmGold` (light mode) / `warmGoldTint` (dark mode) bg + 48 dp inverse medallion with time-of-day glyph (`weather-sunset-up` / `white-balance-sunny` / `weather-night`) + uppercase date kicker (warmGoldTint / warmGold) + 22/800 headline ("Good morning|afternoon|evening, Amir") + one supportive sentence that swaps on time of day | Anchors the top of the day; replaces the removed header subtitle. The signed-in account icon in `ScreenHeader` is the canonical Profile entry point; the greeting card is informative rather than the only account control. The reflection sentence is descriptive only — no evaluation, no mood trend (S26). The medallion and accent flip per mode so the card is always readable on its background. |
 | Today's plan | Stepper: Check-in (✓ done) → Exercise (active) → Journal (pending); each step navigates | Mirrors §21; gives 3 one-tap destinations. |
 | Quick actions | Colour-fields tiles in `--ex-*` pairs, MCI glyphs (`weather-windy`, `leaf`, `notebook-edit-outline`, `lifebuoy`) | Reuse the landing tile pattern (§04); colour + icon + word (craft R7). |
 | Recent | Real recent session + entry when signed in; hidden when not | Partial/signed-out degrade (craft §11). |
