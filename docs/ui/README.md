@@ -64,9 +64,14 @@ These apply to **every** screen and milestone. Do not re-derive their decisions 
 |---|---|
 | [`00-toolkit.md`](sections/toolkit/00-toolkit.md) | Toolkit — Contents/Read toggle, chapter list grouped by content group (`getChapters()`), PDF viewer (S07), tap chapter → `setPage()` jump. |
 
+### `sections/crisis/` (M2, shipped)
+
+| File | Concern |
+|---|---|
+| [`00-crisis.md`](sections/crisis/00-crisis.md) | Crisis modal — Ground / Breathe / Quick Reset colour-field tiles → real exercise screens (S11), UK contacts, quiet close. |
+
 ## Planned
 
-- `sections/crisis/` — Crisis FAB → Ground / Breathe / Quick Reset → contacts.
 - `sections/checkin/` — home check-in card → state / survival response / triggers → save.
 - `sections/portfolio/` — favourites, safe-space notes, custom strategies (M3).
 - `sections/dashboard/` — descriptive patterns only, no mood trend (S26, M3).

@@ -2,6 +2,45 @@
 
 Append-only record of changes (decisions + progress). Newest first. Never edit or delete a past entry.
 
+## 2026-09-17 (4) — Toolkit consistency pass + crisis wiring + screens-vs-stories audit
+
+### Toolkit styling made consistent with the rest of the app
+Read `docs/ui/03-screen-craft.md` + `04-component-library.md` first, then refactored
+`app/(tabs)/toolkit.tsx` away from the pre-refactor exercise-landing idiom:
+- **Segment control**: `M3Chip` pair → **two `M3Button`** (filled active / outlined idle,
+  `secondaryActive`/`secondary`, `flex: 1`) — the app's current button language (dashboard/diary CTAs).
+- **Chapter rows**: previous `Open ›` text chip + 34 dp circle → the diary **entry-card pattern**
+  (40 dp tinted number medallion, title 15/600, `p. range` 13/500, chevron-right).
+- **Read toolbar**: bare-text `‹ Contents` / `Reload` links → `M3Button` text (`arrow-left`) +
+  **meta pill** (`surface2`, radius 999, `book-open-page-variant`, `Page X of Y`) + 36 dp icon
+  reload circle (`surfaceOffset`, `refresh`).
+- **Empty state**: bare text → design-system §17 medallion + title + supportive line.
+- **Retry** → `M3Button`.
+- `docs/ui/sections/toolkit/00-toolkit.md` decisions + ASCII updated to match.
+- Kept the fixes from this session: Pdf stays mounted (overlay inside `readWrap`, so the segment
+  stays visible), jump via `pdfRef.setPage()` only (no controlled `page` prop → no white-screen loop).
+
+### Crisis screen (from the audit)
+- `app/crisis/index.tsx` rebuilt: the Ground / Breathe / Quick Reset buttons were dead
+  (`router.back()`). Now they are **colour-field tiles** (dashboard quick-action idiom,
+  `--ex-ground`/`--ex-breath`/`--ex-crisis` pairs) deep-linking to the real screens
+  (`/exercise/category/sensory`, `/exercise/category/crisis`) — S11: crisis is a category, not a
+  separate section. Quiet icon-only close (craft §10.4). UK contacts in a `surface` card.
+
+### Screens-vs-stories audit (meetings + `01-user-stories.md`)
+Walked the 28 Aug / 2 Sep meetings, `RemainingM2.txt`, `screenDesignPrompt.txt` and all 29 stories
+against what ships. Full findings recorded in the M2 register; headline:
+- ✅ Toolkit (S06/S07 chapters + PDF + jump), Exercises (S08–S11), Sessions (S12–S18),
+  Journal (S19–S24 incl. edit-window + delete + prompts), Dashboard, Check-in data path (S25).
+- ✅ Browse-first (S01/S07), Google-only (S02), no mood dashboard (S26), PDF out of repo (S28),
+  timestamps (S29) — all PASS (`npm run verify` 44/44).
+- ⚠️ Deferred to M3 (already tracked): research profile UI (S03), daily check-in card on Home
+  (M3-02), Portfolio (M3-04), onboarding (M3-08), export (M3-09, developer tool only — S27).
+- 🔧 Fixed now: crisis modal dead buttons.
+
+### Verification
+- `npx tsc --noEmit` EXIT 0 · `npx expo export --platform android` bundles (4.2 MB hbc).
+
 ## 2026-09-17 (3) — Toolkit PDF "Download interrupted" fixed (react-native-blob-util 0.24.10 bug)
 
 ### Diagnosis
