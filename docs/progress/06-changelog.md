@@ -2,7 +2,52 @@
 
 Append-only record of changes (decisions + progress). Newest first. Never edit or delete a past entry.
 
-## 2026-09-17 (7) — Phase A implemented: live Google sign-in + soft gate + research prompt
+## 2026-10-01 (2) — Follow-up: completion-button text contrast + changeable check-in
+
+Follow-up to [`09-bugfix-report.md`](09-bugfix-report.md).
+
+- **`components/M3Button.tsx`** — filled/selected buttons now pick their label + icon colour from the
+  **fill's own luminance** (WCAG: whichever of `#FFFFFF` / `#1A1A13` contrasts more), instead of the
+  background-relative `textInverse`. A green fill can no longer swallow its label. The container
+  colour is also painted on the inner content view as well as the wrapper (belt-and-braces from the
+  earlier fill fix). New optional `textColor` prop for explicit overrides.
+- **`app/exercise/session/[id].tsx`** — the "How do you feel now?" check-in in the **Saved** stage is
+  no longer locked after the first tap: selecting a different state saves the new check-in
+  (records stay append-only). The now-redundant "Saved — thank you." line is removed; the helper
+  reads "Optional — tap another to change your answer any time."
+
+### Verification
+
+- `npx tsc --noEmit` EXIT 0 · `npx expo export --platform android` bundles (4.3 MB hbc).
+
+## 2026-10-01 — Three persistent bugs fixed (auto sign-in, Toolkit free-preview, invisible button)
+
+Full write-up: [`09-bugfix-report.md`](09-bugfix-report.md). Headlines:
+
+- **Exercises tab no longer opens Google sign-in on its own.** `app/(tabs)/exercises.tsx` called
+  `getSessions()` on mount; `getSessions()` → `ensureSignedIn()` → `signInWithGoogle()` →
+  `Linking.openURL`. The catalogue (`getAllExercises()`, public read) is now loaded unconditionally
+  so signed-out users see the screen and it stops "Loading exercises…"; `getSessions()` runs only
+  when already signed in. Same latent prompt-on-mount guarded in `app/diary/[id].tsx`.
+  Sign-in is triggered only by user action ("Start exercise" gate on `app/exercise/[id].tsx`).
+- **Toolkit free-preview + lock page.** Replaced the scroll-locked/`gate()` modal approach in
+  `app/(tabs)/toolkit.tsx`: signed out now renders pages 1–10 as single-page Pdfs in a plain
+  ScrollView (free scrolling, no re-render, no snap-back) followed by a **lock page** in the
+  "page 11" slot — lock icon + "Sign in with Google" button, no modal. Locked chapter rows show a
+  lock icon and jump to the lock page. Signed in keeps the full continuous Pdf. New
+  `loadToolkitLocalSource()` in `lib/toolkit.ts` downloads the workbook once to the device cache
+  and shares one `file://` source across the preview pages (PDF stays out of the repo, S07/S28).
+- **Session completion buttons visible + green.** `components/M3Button.tsx` now paints the container
+  colour on the wrapper (the flex'd tap target) instead of an inner View — this is what made filled
+  buttons read as transparent. "Review & save", "Save" and "Done" in `app/exercise/session/[id].tsx`
+  now use `success` green.
+
+### Verification
+
+- `npx tsc --noEmit` EXIT 0 · `npx expo export --platform android` bundles (4.3 MB hbc).
+- Device QA still required for full acceptance.
+
+## 2026-09-24 — Phase A implemented: live Google sign-in + soft gate + research prompt
 
 Implemented Phase A of `docs/progress/08-live-data-and-auth-wiring.md` (design doc updated to
 reflect what shipped). All per the 28 Aug meeting (auth identity on `users` table §5; sign-up at
@@ -30,7 +75,7 @@ first exercise attempt §6; five optional research questions §6).
 - **Not done (Phase B/C pending)**: dashboard stats still read mock values (Sessions `"12"` fallback,
   streak `5d`, `thisWeek` chart) — that is Phase B (M3-02/M3-03).
 
-## 2026-09-17 (6) — Live-data design doc revised against meeting notes
+## 2026-09-23 — Live-data design doc revised against meeting notes
 
 Per request, re-checked `docs/progress/08-live-data-and-auth-wiring.md` against
 `C:\Users\Pc Dayan\Desktop\PROJECTS\Projects\CalmAnchorInternship\docs\Meetings.txt`
@@ -53,12 +98,13 @@ Changes to the doc:
 - Milestones said to be correct (per user): M3-03 stats/streak + M3-02 check-in card remain the
   backbone; no schema/RLS/persona changes (02 Sep: DB hardening was done before UI, already 46/46).
 
-## 2026-09-17 (5) — Live-data + Google sign-in: design doc (no code)
+## 2026-09-23 — Live-data + Google sign-in: design doc (no code)
 
 Design-only plan written per request — nothing implemented yet. File:
 `docs/progress/08-live-data-and-auth-wiring.md` (indexed in `docs/progress/README.md`).
 
 Key findings from the audit before writing it:
+
 - **The data layer is already live**: `lib/db.ts` calls real Supabase for every domain; there are
   **no app-level mock functions**.
 - The **only mock values left** are on the dashboard (`app/(tabs)/index.tsx`): Sessions fallback
@@ -75,11 +121,13 @@ skeleton + signed-out states, generated types); **C** — verification (tsc, exp
 46/46, on-device checklist). Non-goals kept: no M3-07 offline-first, no S03/portfolio, no trend
 visualisations (S26), no schema/RLS changes.
 
-## 2026-09-17 (4) — Toolkit consistency pass + crisis wiring + screens-vs-stories audit
+## 2026-09-22 — Toolkit consistency pass + crisis wiring + screens-vs-stories audit
 
 ### Toolkit styling made consistent with the rest of the app
+
 Read `docs/ui/03-screen-craft.md` + `04-component-library.md` first, then refactored
 `app/(tabs)/toolkit.tsx` away from the pre-refactor exercise-landing idiom:
+
 - **Segment control**: `M3Chip` pair → **two `M3Button`** (filled active / outlined idle,
   `secondaryActive`/`secondary`, `flex: 1`) — the app's current button language (dashboard/diary CTAs).
 - **Chapter rows**: previous `Open ›` text chip + 34 dp circle → the diary **entry-card pattern**
@@ -94,6 +142,7 @@ Read `docs/ui/03-screen-craft.md` + `04-component-library.md` first, then refact
   stays visible), jump via `pdfRef.setPage()` only (no controlled `page` prop → no white-screen loop).
 
 ### Crisis screen (from the audit)
+
 - `app/crisis/index.tsx` rebuilt: the Ground / Breathe / Quick Reset buttons were dead
   (`router.back()`). Now they are **colour-field tiles** (dashboard quick-action idiom,
   `--ex-ground`/`--ex-breath`/`--ex-crisis` pairs) deep-linking to the real screens
@@ -101,8 +150,10 @@ Read `docs/ui/03-screen-craft.md` + `04-component-library.md` first, then refact
   separate section. Quiet icon-only close (craft §10.4). UK contacts in a `surface` card.
 
 ### Screens-vs-stories audit (meetings + `01-user-stories.md`)
+
 Walked the 28 Aug / 2 Sep meetings, `RemainingM2.txt`, `screenDesignPrompt.txt` and all 29 stories
 against what ships. Full findings recorded in the M2 register; headline:
+
 - ✅ Toolkit (S06/S07 chapters + PDF + jump), Exercises (S08–S11), Sessions (S12–S18),
   Journal (S19–S24 incl. edit-window + delete + prompts), Dashboard, Check-in data path (S25).
 - ✅ Browse-first (S01/S07), Google-only (S02), no mood dashboard (S26), PDF out of repo (S28),
@@ -112,11 +163,13 @@ against what ships. Full findings recorded in the M2 register; headline:
 - 🔧 Fixed now: crisis modal dead buttons.
 
 ### Verification
+
 - `npx tsc --noEmit` EXIT 0 · `npx expo export --platform android` bundles (4.2 MB hbc).
 
-## 2026-09-17 (3) — Toolkit PDF "Download interrupted" fixed (react-native-blob-util 0.24.10 bug)
+## 2026-09-20 — Toolkit PDF "Download interrupted" fixed (react-native-blob-util 0.24.10 bug)
 
 ### Diagnosis
+
 - PDF URL verified healthy: `curl` returns `200`, `Content-Type: application/pdf`, `Content-Length: 2086821`,
   full 2MB body in ~0.3 s (no redirects, no `Content-Encoding`, size matches exactly). So the server was
   not the problem.
@@ -131,6 +184,7 @@ against what ships. Full findings recorded in the M2 register; headline:
   "Download interrupted". Healthy servers and even iOS (separate implementation) are unaffected.
 
 ### Fix
+
 - Patched `node_modules/react-native-blob-util/android/src/main/java/com/ReactNativeBlobUtil/Response/ReactNativeBlobUtilFileResp.java`
   to add `sink.write(bytes, 0, (int) read);` after the file write — the same production-verified fix the
   maintainers/community use (issue #481).
@@ -140,14 +194,16 @@ against what ships. Full findings recorded in the M2 register; headline:
 - Verified the patch file content + `sink.write` present in node_modules; `npx tsc --noEmit` EXIT 0.
 
 ### ⚠️ Requires a native rebuild
+
 The change is in **Java**, so a Metro reload won't pick it up. Rebuild the dev client:
 `npx eas build --profile development --platform android`, install the new APK, then
 `npx expo start --dev-client`. (Same requirement as before: `react-native-pdf`/`react-native-blob-util`
 are not in Expo Go.)
 
-## 2026-09-17 (2) — M2 remaining work: Toolkit (M2-01) + Trigger tracker (M2-05) + docs + QA pass
+## 2026-09-19 — M2 remaining work: Toolkit (M2-01) + Trigger tracker (M2-05) + docs + QA pass
 
 ### Toolkit (`app/(tabs)/toolkit.tsx`) — M2-01
+
 - **Contents/Read segmented control** (`M3Chip`). Contents is the landing view.
 - **Chapter list from `getChapters()`** (20 rows), grouped by `content_group`
   (learn/practice/reflect/reframe/relationships/crisis) with a small-caps header + count; each row
@@ -161,6 +217,7 @@ are not in Expo Go.)
 - `react-native-pdf`'s `PdfRef.setPage(pageNumber)` API verified from its `.d.ts`.
 
 ### Trigger tracker (`app/diary/trigger.tsx`) — M2-05
+
 - New Diary-stack route + a **"Log a trigger" card** on the Diary landing
   (`exGroundBg`/`exGround`, `crosshairs-question`, chevron → `/diary/trigger`).
 - Compose screen: info badge ("Noticing what triggers you… nothing here is judged"), required
@@ -171,6 +228,7 @@ are not in Expo Go.)
 - Trigger rows land in `checkins` — the same table the M3 pattern charts read from.
 
 ### Docs (M2-11 / M2-12)
+
 - `docs/ui/sections/toolkit/00-toolkit.md` (new) — ASCII + decisions + craft cross-check.
 - `docs/ui/sections/diary/00-journal.md` — added trigger-log story + §4 (renumbered) + data note.
 - `docs/ui/README.md` — toolkit + diary-trigger now listed as shipped; planned list trimmed.
@@ -178,6 +236,7 @@ are not in Expo Go.)
 - **M2-11** marked DONE (IA §3 covers all 8 screens), **M2-12** marked DONE (home/diary/toolkit ASCII + skeleton/error/empty states).
 
 ### M2-06 code-level QA pass
+
 - Safe-area insets on every header/scroll screen; KAV + keyboard-inset handling on all compose
   screens; back via `router.back()` + system back on pushed routes (root `_layout.tsx` already has
   ThemeProvider + PaperProvider + StatusBar + modal/card presentations).
@@ -186,11 +245,13 @@ are not in Expo Go.)
 - **Device QA still required** for full M2 acceptance (Android demo-ready; iOS needs device).
 
 ### Verification
+
 - `npx tsc --noEmit` EXIT 0 · `npx expo export --platform android` bundles (4.2 MB hbc).
 
 ## 2026-09-17 — Dashboard greeting moved to top + per-mode warm-gold bg
 
 ### Dashboard (`app/(tabs)/index.tsx`)
+
 - **Greeting card moved to the top of the body** (was anchored at the bottom). New order:
   greeting card → stats row → today's plan → quick relief → weekly window chart → recent
   activity → CTA → warm reminder. Spacing tightened to `marginTop: 4 / marginBottom: 16` so the
@@ -206,11 +267,13 @@ are not in Expo Go.)
 - `docs/ui/sections/home/00-dashboard.md` ASCII + decision row updated to match.
 
 ### Verification
+
 - `npx tsc --noEmit` EXIT 0 · `npx expo export --platform android` bundles (4.2 MB hbc).
 
 ## 2026-09-16 — Avatar removed, greeting card anchored bottom, design-system loaders, light-mode contrast, helpfulness interactivity
 
 ### Header & greeting
+
 - **`components/ScreenHeader.tsx`** — avatar removed; the top-right now carries the `ThemeToggle` only
   and gets the full width. Profile access moved into the dashboard greeting card's chevron, so the
   top-right action cluster is one button on every screen.
@@ -223,6 +286,7 @@ are not in Expo Go.)
   reminder couldn't.
 
 ### Theme
+
 - **`theme/ThemeContext.tsx`** — `system` preference removed (mentor: "auto is too many"). Two
   modes only (`light` / `dark`), persisted to AsyncStorage; `toggle()` cycles light ↔ dark.
   Default still falls back to the system scheme on first launch so we don't flash from light to
@@ -235,6 +299,7 @@ are not in Expo Go.)
   `--color-bg: #F4F1EB` is unchanged (design-system §2 anchor).
 
 ### Design-system §17 loaders (skeleton + spinner) — borrowed
+
 - **`components/M3Skeleton.tsx`** — direct lift of the design-system §17 "Skeleton Loader".
   Interpolation between `--color-surface-offset` and `--color-surface-dynamic` running on the
   design-system `shimmer` keyframes (1.5 s loop). Variants: `text` (14 dp), `text-multi`
@@ -253,11 +318,13 @@ are not in Expo Go.)
   skeleton cards + three entry skeleton rows.
 
 ### Diary compose
+
 - **Placeholder colour** changed from `textFaint` (no-prompt) and `exJournal` (with prompt) to
   `textMuted` (no-prompt) and `secondary` (with prompt). Both now match the warm-cream screen —
   the previous `exJournal` purple read as off-tone against the surface card.
 
 ### Session post-stage visibility
+
 - **Helpfulness tiles** now have an **always-on 1 dp `text` border** so they read as interactive
   even when unselected. Selected state bumps to a 2 dp ring + outset shadow. Added a 0.85
   opacity press feedback so taps are felt. Filled with the strong tone (srFreeze / mood3 /
@@ -268,12 +335,14 @@ are not in Expo Go.)
   readable.
 
 ### Verification
+
 - `npx tsc --noEmit` EXIT 0 · `npx expo export --platform android` bundles (4.2MB hbc). Reload
   via `npx expo start --dev-client`.
 
 ## 2026-09-15 — Dark mode toggle + green tone-down + diary/new rewrite + session nav visibility
 
 ### Dark mode (M2 polish, mentor direction)
+
 - **`theme/ThemeContext.tsx` extended** to three modes (`light` / `dark` / `system`) persisted to
   AsyncStorage under `calmanchor.themeMode`. The resolved `mode` (still `"light" | "dark"`) keeps
   the existing `const c = colors[mode]` pattern working — every screen compiles unchanged. A new
@@ -286,16 +355,17 @@ are not in Expo Go.)
   longer has its own bespoke header; it uses the same ScreenHeader so the top-right of every screen
   is identical (fixes the inconsistency the mentor called out).
 - **Green tone-down** (design-system §7 secondary over primary): the loud `primary` green
-  (`#1C4A32`) is now reserved for the active-tab indicator and CTAs that *must* feel urgent.
+  (`#1C4A32`) is now reserved for the active-tab indicator and CTAs that _must_ feel urgent.
   Everywhere else — stat values, step circles, exercise Start/Do-again, diary Write/Save, session
   Review & save / Save / Done, the "Browse all categories" link — has moved to **`secondary` (warm
   olive `#686040`)** for a calmer feel. `accent` (sage `#4A7C59`) is used where we still want green
   (Sessions stat, Check-in done step, recent-session icon) but at a softer saturation. The design
   system's default page bg (`#F4F1EB` light / `#1E2E16` dark) is unchanged — the issue was the green
-  *accents*, not the cream canvas.
+  _accents_, not the cream canvas.
 
 ### Diary compose (`app/diary/new.tsx`) — full rewrite
-- **Prompts are now the TextInput's `placeholder`**, so the prompt is *inside* the writing surface
+
+- **Prompts are now the TextInput's `placeholder`**, so the prompt is _inside_ the writing surface
   rather than a separate panel pinned above it. The selected prompt is also surfaced as a small
   "PROMPT" kicker chip + close button above the field so it's obvious where the placeholder came
   from. The close button clears the prompt and reverts the placeholder to "Write here…".
@@ -308,6 +378,7 @@ are not in Expo Go.)
   `automaticallyAdjustKeyboardInsets` for iOS. Save button uses `secondary` (warm olive).
 
 ### Exercise session post stage (`app/exercise/session/[id].tsx`)
+
 - **Helpfulness tiles are now filled with the strong tone** (`srFreeze`/`mood3`/`success`) and carry
   `textInverse` glyph + label, instead of the previous pastel `*-bg` fill that disappeared into the
   `surface` panel. Selected state adds a 2 dp fg-colour ring plus an outset shadow so it pops.
@@ -319,12 +390,14 @@ are not in Expo Go.)
   making the file not type-check until cleaned up.
 
 ### Verification
+
 - `npx tsc --noEmit` EXIT 0 · `npx expo export --platform android` bundles (4.2MB hbc).
 - Dev-client reload via `npx expo start --dev-client`.
 
 ## 2026-09-14 — Dashboard + Diary polish + session helpfulness visibility (mentor feedback)
 
 ### Dashboard (`app/(tabs)/index.tsx`)
+
 - **"This week in your window" chart** (design-system §11 — App Screen Sketch): 7-bar weekly view with
   per-day state colours (`--ns-window`, `--ns-hyper`, `--ns-hypo`), legend, and a dashed-border Today
   column (pre-data). Header shows the running tally (`4 of 6 days in window`) + a window-green pill with
@@ -339,6 +412,7 @@ are not in Expo Go.)
   tokens (already in both light + dark schemes).
 
 ### Diary landing (`app/(tabs)/diary.tsx`)
+
 - **Distinct icon per prompt** (`notebook-heart-outline`, `meditation`, `flower-tulip-outline`,
   `book-open-page-variant-outline`, `thought-bubble-outline`, `candle` — cycles if more) so the row no
   longer reads as the same card repeated three times.
@@ -350,6 +424,7 @@ are not in Expo Go.)
 - Tinted icon medallion bumped 34→40 dp to match the dashboard quick-action tiles for consistency.
 
 ### Diary compose (`app/diary/new.tsx`)
+
 - **Whole prompt chip is now Pressable** (previously only the `+`/`✕` glyph was tappable) with full
   `accessibilityRole="button"` + selected state. Glyph swapped from `+`/`✕` text to MCI `plus`/`close`.
 - **Keyboard**: KAV behaviour changed from `undefined` (Android no-op) → `"height"` on Android so
@@ -361,6 +436,7 @@ are not in Expo Go.)
   impossible to miss now.
 
 ### Exercise session (`app/exercise/session/[id].tsx`)
+
 - **Helpfulness tiles** (the "Did this exercise help?" row, S15 + D04 friendly words) rebuilt as
   **colour-field Pressable tiles** — `bg` background + matching `fg` icon and label, two-px border
   in `fg` when selected. The previous outlined M3Button variant disappeared against the
@@ -369,12 +445,14 @@ are not in Expo Go.)
 - `HELP_OPTIONS` now carries `bg` alongside `fg` so the tile can fill with the paired surface.
 
 ### Verification
+
 - `npx tsc --noEmit` EXIT 0 · `npx expo export --platform android` bundles (4.2MB hbc). Dev-client
   reload via `npx expo start --dev-client`.
 
 ## 2026-09-13 — Home/dashboard + Diary (journal) screens (M2 build-out)
 
 ### Scope (from the meetings + IA doc)
+
 - Mentor expects **Dashboard** and **Journal** screens; both already fit the 5-tab shell (Home · Toolkit ·
   Exercises · Diary · Portfolio) in `docs/ui/01-navigation-and-ia.md` — no new tabs.
   - **Dashboard → Home tab** (`(tabs)/index.tsx`), modelled on design-system §21 "Composite Screens"
@@ -383,6 +461,7 @@ are not in Expo Go.)
     journal components (§17 empty state, §18 list/chip idiom).
 
 ### Dashboard (`app/(tabs)/index.tsx`) — design-system §21 Composite 1
+
 - Greeting header: computed date ("Sunday, 13 September") + time-of-day greeting + "Amir" (Alex→Amir) +
   warm-gold "Window" pill (token-paired `warmGoldTint`/`warmGold` + `star-four-points` glyph) + avatar → `/profile`.
 - Stat cards (Sessions / Streak / Window): **Sessions wired to real data** when signed in; Streak/Window
@@ -395,6 +474,7 @@ are not in Expo Go.)
 - Icons are MaterialCommunityIcons (rules §2.1) — no emoji icon system.
 
 ### Journal (`app/(tabs)/diary.tsx` + `diary/new.tsx` + `diary/[id].tsx`) — S19–S24
+
 - **Landing**: ScreenHeader + "Write a new entry" primary; **Reflection prompts** (S23, from `prompts`)
   as tinted `exJournalBg` cards with `lightbulb-on-outline` medallions; **Your entries** timeline
   (newest first) with the design-system empty state (§17: "No journal entries yet" + supportive line +
@@ -406,37 +486,44 @@ are not in Expo Go.)
   **delete any time** (S22) with a design-system §17 confirm modal → `deleteJournalEntry()`.
 
 ### Data layer (`lib/db.ts`)
+
 - `saveJournalEntry` now returns the inserted row (needed for the flow).
 - `getJournalEntries` now includes `prompts(prompt_text)` **and** `journal_entry_tags(tags(id,name))`.
 - New: `getPrompts()`, `updateJournalEntry(id, body)` (S21), `setJournalEntryTags(entryId, tagIds)` (S20).
 
 ### Verification
+
 - `npx tsc --noEmit` EXIT 0 · `npx expo export --platform android` bundles (4.2MB hbc). Dev-client reload
   via `npx expo start --dev-client` to view on device.
 
 ## 2026-09-11 (2) — Material 3 foundation + tab shell + exercises screen (5-4-3-2-1)
 
 ### MD3 foundation
+
 - **Installed `react-native-paper` ^5.15.3** (MD3 by default) + `react-native-vector-icons` + `@types/react-native-vector-icons` + `@react-native-community/slider`.
 - **`theme/md3.ts`** — MD3 theme bridge mapping `theme/tokens.ts` → `MD3Theme` (primary/secondary/tertiary ← tokens, surface variants ← offsets, onSurfaceVariant ← text-muted, outline ← border). `md3LightTheme`/`md3DarkTheme` exported.
 - **`app/_layout.tsx`** — `ThemeProvider` + `PaperProvider` (mode-aware) + StatusBar + Stack (tabs + exercise/diary/crisis/profile).
 
 ### Tab shell (D14)
+
 - **`app/(tabs)/_layout.tsx`** — expo-router `Tabs` styled to MD3/tokens: Home · Toolkit · Exercises · Diary · Portfolio (labels + icons, active = primary).
 - **`components/CrisisFab.tsx`** — persistent Paper `FAB` (error-red, hand-heart icon) floating above the tab bar → full-screen crisis modal. Never gated.
 - **`components/ScreenHeader.tsx`** — title + avatar top-right → profile stack.
 - Moved `index`/`toolkit` into `(tabs)/`; added `(tabs)/exercises`, `(tabs)/diary`, `(tabs)/portfolio`; added `diary/`, `exercise/`, `crisis/`, `profile/` stacks.
 
 ### Exercises (5-4-3-2-1) — from existing ASCII pack
+
 - **`(tabs)/exercises.tsx`** — Layout A category cards + Layout B "How are you feeling?" state filter (fight/flight/freeze/fawn/OK → suggested category + exercise rows). Null/error states + "no suggestions" edge.
 - **`exercise/category/[key].tsx`** — exercises in one category (title/steps/duration → Start).
 - **`exercise/[id].tsx`** — detail: category/steps/duration chips, "what this is"/"what to expect", Start (browse-first, sign-in only at save), null/error states.
 - **`exercise/session/[id].tsx`** — guided session (S12–S15/S18): distress-before slider → step 1..5 (progress bar, prev/next) → distress-after + helpfulness chips → review/confirm → `saveSession()` → saved. Cancel discards (no confirm). Skippable ratings, no fixed duration.
 
 ### Verification
+
 - `tsc --noEmit` clean. `npx expo export --platform android` bundles successfully (4.1MB hbc).
 
 ### Story cross-check (exercise screens vs S08–S18)
+
 - ✅ S08 (6 categories), S09 (steps in order), S10 (no forced order), S11 (crisis = normal category), S12 (session start), S13 (confirm before save), S14 (distress 0–10 pre/post, nullable), S15 (helpfulness 0–10), S18 (multi/day).
 - 🟡 **S16 (tags on sessions)** — tag picker not wired yet; join + `getSystemTags()`/`createUserTag()` ready.
 - 🟡 **S17 (session history)** — no history view yet; landing "Done today" is a placeholder.
@@ -445,6 +532,7 @@ are not in Expo Go.)
 ## 2026-09-11 — Engine B via RPC; 46/46 PASS (direct-DB password attempt deferred)
 
 ### The `SUPABASE_DB_URL` attempt, and why it was parked
+
 - Tried to connect this machine to Supabase directly for Engine B introspection (S02-rows, S04-rows,
   S26, S27, S29) via a `postgres://` string in `.env`.
 - **Blockers, in order:** (1) the legacy direct host `db.uqisvrvgjoujxgrqigie.supabase.co` is
@@ -460,6 +548,7 @@ are not in Expo Go.)
   or the IPv4 add-on, if ad-hoc SQL is ever needed.
 
 ### Changes
+
 - **New `supabase/introspection.sql`** — `get_schema_introspection()` `security definer` RPC returning
   RLS flags, public views, users/profiles columns, and `created_at`/`updated_at` presence as JSON.
   Grants: `service_role` + `authenticated` only (anon/public revoked). Run once in the SQL editor.
@@ -473,6 +562,7 @@ are not in Expo Go.)
 ## 2026-09-05 — Design-system reconciliation + M2 data/auth hardening
 
 ### Design system reconciliation (source of truth = `designsystemtext.txt` v2.0)
+
 - **Fixed `design-system/calm-anchor-design-system.css` dark-mode tokens** to match Aamir's spec exactly.
   Previously the CSS dark palette diverged (brighter/warm-tuned); now aligned: ns-hyper `#D4744A`,
   ns-hypo `#7A96AA`, sr-fight `#D96050`, sr-flight `#E09050`, sr-freeze `#7A96AA`, sr-fawn `#A888C4`,
@@ -482,6 +572,7 @@ are not in Expo Go.)
 - `theme/tokens.ts` already matched the spec (verified) — the CSS was the only divergence; now both align.
 
 ### Data hardening (per 2 Sep meeting: personas + stress test)
+
 - **`services/personas.ts`** — seeds 3 persona users via the service role: **active** (5 check-ins,
   8 sessions, 6 journal entries), **power** (3 check-ins, 12 sessions, 2 entries), **infrequent**
   (1/1/1 over 14 days). `npm run personas`.
@@ -492,6 +583,7 @@ are not in Expo Go.)
   `SUPABASE_DB_URL`), S10/S12/S13 (schema-only).
 
 ### Google-only auth (S02/D02/S01)
+
 - **`lib/auth.ts` rewritten**: no more anonymous sign-in. `getCurrentUserId()` returns id or `null`;
   `signInWithGoogle()` (OAuth, deep-link `calmanchor://auth/callback`); `ensureSignedIn()` — the guard
   prompted at first exercise attempt (browse-first, S01); `signOut()`.
@@ -499,12 +591,14 @@ are not in Expo Go.)
   `getCheckins`, `saveSession`, `getSessions`, profile, tags) now call `ensureSignedIn()`.
 
 ### Anonymisation (S05/D13) + single-entry delete (S22)
+
 - **`supabase/anonymise.sql`** — `anonymise_user(p_user_id)` SQL function: rotates the user's UUID across
   all user-data tables to a fresh random id, clears PII on `users` (email/display_name/google_identity),
   mapping not stored. **Run in SQL editor** (like schema/rls).
 - **`lib/db.ts`**: `anonymiseMyData()` (calls the RPC) + `deleteJournalEntry(id)` (single entry, any time).
 
 ### Docs sync (this session)
+
 - **New ADRs recorded (accepted):** ADR-002 (Google-only auth), ADR-006 (anonymisation by UUID
   rotation), ADR-009 (screen mapping → M2). Register + candidate list updated in `docs/decisions/`.
 - **Screen mapping moved to M2** (2 Sep meeting, "screening tasks can be moved to M2"): M1-21 split —
@@ -521,7 +615,7 @@ are not in Expo Go.)
 - **Seed ran** against live Supabase (service role): **20 chapters / 35 exercises / 3 prompts / 3 system tags**. Confirmed.
 - **RLS isolation (S04) fixed** — root cause was a stale `checkins` INSERT policy in the live DB rejecting
   owner inserts. Rewrote `supabase/rls.sql` as **idempotent per-operation policies** (`drop policy if
-  exists` + explicit select/insert/update/delete per user-data table) and re-applied in the SQL editor.
+exists` + explicit select/insert/update/delete per user-data table) and re-applied in the SQL editor.
   Now `npm run verify:rls` → **S04 PASS, S05 PASS**.
 - **Full verification: 22 checks, 22 PASS** (`npm run verify:rls`). Recorded in
   `docs/schema-coaching/03-schema-status.md`. S26/S27/S29 + sequence stories remain UNTESTED (need
@@ -558,6 +652,7 @@ are not in Expo Go.)
 ## 2026-08-30 — Query-pack compliance pass (schema + seed corrections)
 
 ### Progress — hard-fail fixes (S05, S29)
+
 - **S05 (delete my data):** every user-data FK now `on delete cascade` (checkins, journal_entries,
   exercise_sessions, checklist_progress, crisis_plan, settings, tags, junction tables) so delete-user
   cascades cleanly and no orphans remain.
@@ -567,30 +662,36 @@ are not in Expo Go.)
   `crisis_plan` already had both.
 
 ### Progress — S11 crisis filter (decision: satisfy both filters)
+
 - All 7 "Tools for the Bad Days" exercises now have **`exercise_type = 'crisis'`** AND
-  **`category = 'crisis'`**. This satisfies S11's `WHERE exercise_type = 'crisis'` query *and* S08's
+  **`category = 'crisis'`**. This satisfies S11's `WHERE exercise_type = 'crisis'` query _and_ S08's
   `GROUP BY category` grouping — same set, both filters work, no separate crisis table/feature.
 - Also fixed: "The Balloon Release" was mis-categorised `somatic` — it's a bad-days exercise, now
   `category = 'crisis'`.
 
 ### Progress — system tags (S16/S20)
+
 - `services/seed.ts` now seeds system tags (`user_id` null): **grounding, anxious, mood** (D03 keeps
   "mood" only as a journal tag). Satisfies the INSERT…SELECT queries that attach `name = 'grounding'`/
   `'anxious'` system tags.
 
 ### Fix — RLS hole (S16)
+
 - `tags` write policy tightened: `for insert with check (auth.uid() = user_id)` only — lets users create
-  only *their* private tags, not global (system) tags. System tags are seeded via the service role
+  only _their_ private tags, not global (system) tags. System tags are seeded via the service role
   (bypasses RLS).
 
 ### Fix — `documents` drop statement
+
 - Added `drop table if exists documents cascade;` so the script re-runs cleanly.
 
 ### Progress — CHECK constraints (prevent test friction, recommended)
+
 - `exercises.category` CHECK in the 6 contract names; `distress_before`/`distress_after`/`helpfulness`
   CHECK 0–10.
 
 ### Notes (accepted, not breaking — for the record)
+
 - **5-4-3-2-1 Grounding** lives under "Mind" on workbook p.26 but is seeded `sensory` — acceptable
   contract mapping, noted. Its exercise is otherwise identical.
 - **Chapter page ranges** in the seed differ from the workbook's own contents page for some chapters
@@ -600,6 +701,7 @@ are not in Expo Go.)
 ## 2026-08-30 — RLS decision + contract alignment (ADR-003)
 
 ### Decision — RLS on all tables, difference in the policy (`docs/decisions/ADR-003-rls-strategy.md`)
+
 - **Accepted (Amirreza, 2026-08-30):** `row level security` is enabled on **every** table. Content tables
   get a public-read policy (`for select using (true)`); user-data tables get own-rows-only
   (`auth.uid() = user_id`); `users` own-rows; `tags` public-read for system tags + owner for user tags;
@@ -608,6 +710,7 @@ are not in Expo Go.)
   not in whether RLS is on.
 
 ### Decision — `users` table + service-role seed (sub-points of ADR-003)
+
 - A `public.users` table mirrors `auth.users` (`id` PK→FK, `email`, `display_name`, `google_identity`
   unique, no password columns). All user-data FKs now reference `users(id)`. A `handle_new_user` trigger
   auto-creates the row on signup + one-time backfill. Satisfies S02/S27's `FROM users` queries and fixes
@@ -616,6 +719,7 @@ are not in Expo Go.)
   still work under strict RLS. `lib/supabase.ts` unchanged (anon key for the client).
 
 ### Progress — exercise categories aligned to contract (S08)
+
 - Renamed the seed's categories to the contract set: `body→somatic`, `breath→breathing`,
   `senses→sensory`, `mind→mindful`, and "Tools for the Bad Days" exercises → `crisis`.
 - Final distribution (verified from file): `breathing=3, somatic=12, sensory=8, voice=4, mindful=2, crisis=6`
@@ -625,23 +729,28 @@ are not in Expo Go.)
 ## 2026-08-30 — Schema alignment & seed corrections
 
 ### Decision — toolkit read source (`docs/decisions/ADR-001-toolkit-source.md`)
+
 - **Accepted (Amirreza, 2026-08-30):** the workbook PDF is read from **Supabase Storage (public-read)** via a URL and cached on-device by `react-native-pdf` — **not committed to the repo**. The `assets/toolkit_compressed.pdf` file is removed and `.gitignore` excludes `*.pdf`. Seam: a new `lib/toolkit.ts` (same discipline as `lib/auth.ts`/`lib/db.ts`).
 
 ### Progress — mood removed, evidence-based metrics added (NOT a decision)
+
 - **`lib/db.ts`:** removed `MoodLogInput`, `saveMoodLog`, `getMoodLogs`; removed `mood_before`/`mood_after` from `SessionInput`; added `distress_before`/`distress_after`/`helpfulness` (0–10) and `note`. Per `04-wellbeing-metrics.md` (D04).
 - **Migration `0001_alignment_exercise_sessions.sql`:** renames `sessions` → `exercise_sessions`; drops `mood_before`/`mood_after`; adds `distress_before`/`distress_after`/`helpfulness` (smallint 0–10); drops `mood_logs`. Not yet applied (live Supabase).
 - Matches S26/D03 (no mood dashboard, no `mood_logs`).
 
 ### Progress — table/column renames
+
 - **`lib/db.ts`:** `saveSession`/`getSessions` target `exercise_sessions`; `getJournalEntries` joins `prompts` (not `journal_prompts`); `JournalEntryInput` drops `chapter_id`/`mood_after` (keeps `body`, `prompt_id`).
 - **Migration `0002_alignment_journal_prompts.sql`:** renames `journal_prompts` → `prompts`; drops `journal_entries.mood_after`/`chapter_id`; adds `updated_at`, sets `body not null`.
 - Matches S19/S23 (journal_entries shape) and S23 (table named `prompts`).
 
 ### Progress — missing tables
+
 - **Migration `0003_missing_tables.sql`:** adds `users` (google_identity ref, no password columns), `profiles` (research fields only, separated identity), `tags` (system + user), `exercise_session_tags`, `journal_entry_tags`, `documents` (storage anchor). RLS: owner-only on all user-data tables (S04).
 - **`lib/db.ts`:** added `getCurrentProfile`, `saveProfile`, `getSystemTags`, `createUserTag`. Not yet applied (live Supabase).
 
 ### Seed fixes (`services/seed.ts` — edited, NOT run)
+
 - **6 categories** (was 5): added `body`. Reassigned body-family exercises — Hand on Chest & Slow Breath, Tapping/EFT, Rocking or Swaying — plus new **Stretching or Yoga (Cat-Cow / Child's Pose)**.
 - **Added 9 missing workbook exercises** (verified against `toolkit_compressed.pdf` pages 23–34 + 99–113):
   - mind: "What's True Right Now?", "Gentle Journaling: What Does This Part of Me Need?"

@@ -1,16 +1,30 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { ComponentProps } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Dimensions } from "react-native";
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  Dimensions,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+} from "react-native";
 import { Text } from "react-native-paper";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import Pdf, { PdfRef } from "react-native-pdf";
+import Pdf, { PdfRef, Source } from "react-native-pdf";
 import ScreenHeader from "../../components/ScreenHeader";
 import M3Button from "../../components/M3Button";
 import M3Skeleton from "../../components/M3Skeleton";
-import { useSignInGate } from "../../components/SignInPrompt";
 import { getChapters } from "../../lib/db";
-import { useSession } from "../../lib/auth";
-import { toolkitSource } from "../../lib/toolkit";
+import { signInWithGoogle, useSession } from "../../lib/auth";
+import { loadToolkitLocalSource, resetToolkitLocalSource } from "../../lib/toolkit";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { colors } from "../../theme/tokens";
 
@@ -43,7 +57,12 @@ const GROUP_LABELS: Record<string, string> = {
   crisis: "Crisis",
 };
 
-const SIGNED_OUT_PAGE_LIMIT = 10;
+/**
+ * Signed-out preview length. Pages 1..FREE_PAGE_LIMIT read freely; the slot
+ * after them (the "page 11" position) is a lock page with a sign-in button —
+ * never a pop-up modal, and never a re-render that traps the reader.
+ */
+const FREE_PAGE_LIMIT = 10;
 
 /** First number in "1–6" → 1 (start page). */
 const startPageOf = (range: string) => {
@@ -61,6 +80,12 @@ const startPageOf = (range: string) => {
  *   Read — the workbook PDF (S07), `pdfRef.setPage()` jumps to the tapped
  *     chapter's start page. Page info is a meta pill; reload is an icon circle.
  *
+ * Signed out, Read shows a **free preview**: the first FREE_PAGE_LIMIT pages as
+ * individually rendered pages that scroll freely, followed by a lock page (the
+ * "page 11" slot) carrying a lock icon + "Sign in with Google". Nothing is
+ * hidden behind a modal and scrolling never gets blocked. Signed in, the same
+ * area swaps to the full continuous Pdf.
+ *
  * The Pdf stays mounted; Contents is an overlay inside readWrap so the viewer
  * never unmounts/remounts (no re-download, no white-screen flash) and the
  * segment above stays visible. Browse-first (S01): chapters are public.
@@ -69,10 +94,6 @@ export default function ToolkitScreen() {
   const { mode } = useAppTheme();
   const c = colors[mode];
   const { signedIn } = useSession();
-  const { gate, prompt } = useSignInGate({
-    title: "Continue with the full Toolkit",
-    message: "Sign in with Google to read the remaining pages and save your progress.",
-  });
 
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,8 +101,26 @@ export default function ToolkitScreen() {
   const [view, setView] = useState<"contents" | "read">("contents");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [source, setSource] = useState<Source | null>(null);
 
   const pdfRef = useRef<PdfRef>(null);
+  const previewRef = useRef<PreviewHandle>(null);
+
+  // One shared on-device copy of the workbook for every Pdf instance.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const s = await loadToolkitLocalSource();
+        if (active) setSource(s);
+      } catch (e) {
+        if (active) setError(e instanceof Error ? e.message : String(e));
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -107,21 +146,37 @@ export default function ToolkitScreen() {
     return Array.from(map.entries());
   }, [chapters]);
 
+  /** Scroll the signed-out preview so `pageNo` sits at the top. */
+  const previewGoTo = (pageNo: number) => {
+    previewRef.current?.goTo(pageNo);
+  };
+
   const openPage = (targetPage: number) => {
-    // Jump via the imperative ref (native setNativePage) instead of the
-    // controlled `page` prop — avoids the prop→componentDidUpdate→scrollToIndex
-    // re-render loop that white-screens while swiping.
-    pdfRef.current?.setPage(targetPage);
     setView("read");
+    if (signedIn) {
+      // Jump via the imperative ref (native setNativePage) instead of the
+      // controlled `page` prop — avoids the prop→componentDidUpdate→scrollToIndex
+      // re-render loop that white-screens while swiping.
+      pdfRef.current?.setPage(targetPage);
+      return;
+    }
+    previewGoTo(targetPage);
   };
 
   const openChapter = (ch: Chapter) => {
     const targetPage = startPageOf(ch.page_range);
-    if (!signedIn && targetPage > SIGNED_OUT_PAGE_LIMIT) {
-      gate(() => openPage(targetPage));
+    setView("read");
+    if (signedIn) {
+      pdfRef.current?.setPage(targetPage);
       return;
     }
-    openPage(targetPage);
+    // Signed out: free pages open directly; anything beyond lands on the lock
+    // page (the "page 11" slot) where the sign-in button lives — no modal.
+    if (targetPage > FREE_PAGE_LIMIT) {
+      previewGoTo(FREE_PAGE_LIMIT + 1);
+      return;
+    }
+    previewGoTo(targetPage);
   };
 
   const segmentBtn = (label: string, icon: MciGlyph, target: "contents" | "read") => {
@@ -130,7 +185,8 @@ export default function ToolkitScreen() {
       <M3Button
         label={label}
         icon={icon}
-        variant={active ? "filled" : "outlined"}
+        variant="outlined"
+        selected={active}
         color={active ? c.secondaryActive : c.secondary}
         onPress={() => setView(target)}
         style={styles.segmentBtn}
@@ -160,17 +216,31 @@ export default function ToolkitScreen() {
               onPress={() => setView("contents")}
             />
             <View style={[styles.pagePill, { backgroundColor: c.surface2 }]}>
-              <MaterialCommunityIcons name="book-open-page-variant" size={14} color={c.textMuted} />
-              <Text style={[styles.pageText, { color: c.textMuted }]}>Page {signedIn ? page : Math.min(page, SIGNED_OUT_PAGE_LIMIT)}
-                {signedIn ? (total ? ` of ${total}` : "") : ` of ${Math.min(total || SIGNED_OUT_PAGE_LIMIT, SIGNED_OUT_PAGE_LIMIT)}`}
+              <MaterialCommunityIcons
+                name={signedIn ? "book-open-page-variant" : "lock-open-variant-outline"}
+                size={14}
+                color={c.textMuted}
+              />
+              <Text style={[styles.pageText, { color: c.textMuted }]}>
+                {signedIn
+                  ? `Page ${page}${total ? ` of ${total}` : ""}`
+                  : `Free · Page ${Math.min(page, FREE_PAGE_LIMIT)} of ${FREE_PAGE_LIMIT}`}
               </Text>
             </View>
             <Pressable
-              onPress={() => setError(null)}
+              onPress={() => {
+                resetToolkitLocalSource();
+                setSource(null);
+                setError(null);
+                setLoading(true);
+                loadToolkitLocalSource()
+                  .then((s) => setSource(s))
+                  .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+                  .finally(() => setLoading(false));
+              }}
               hitSlop={10}
               accessibilityRole="button"
               accessibilityLabel="Reload workbook"
-              disabled={!error}
               style={[styles.reloadBtn, { backgroundColor: c.surfaceOffset }]}
             >
               <MaterialCommunityIcons name="refresh" size={20} color={error ? c.error : c.textMuted} />
@@ -184,10 +254,15 @@ export default function ToolkitScreen() {
               </Text>
               <M3Button label="Retry" color={c.secondary} onPress={() => setError(null)} style={styles.retry} />
             </View>
-          ) : (
+          ) : !source ? (
+            <View style={styles.loadingWrap}>
+              <M3Skeleton variant="card" style={styles.loadingCard} />
+              <Text style={[styles.loadingText, { color: c.textMuted }]}>Loading…</Text>
+            </View>
+          ) : signedIn ? (
             <Pdf
               ref={pdfRef}
-              source={toolkitSource}
+              source={source}
               style={styles.pdf}
               trustAllCerts={false}
               renderActivityIndicator={(progress) => (
@@ -200,15 +275,17 @@ export default function ToolkitScreen() {
               )}
               onPageChanged={(p, t) => {
                 setTotal(t);
-                if (!signedIn && p > SIGNED_OUT_PAGE_LIMIT) {
-                  setPage(SIGNED_OUT_PAGE_LIMIT);
-                  pdfRef.current?.setPage(SIGNED_OUT_PAGE_LIMIT);
-                  gate(() => openPage(p));
-                  return;
-                }
                 setPage(p);
               }}
               onError={(e) => setError(String(e))}
+            />
+          ) : (
+            <FreePreview
+              ref={previewRef}
+              source={source}
+              onPageChange={setPage}
+              onTotal={setTotal}
+              onError={setError}
             />
           )}
 
@@ -254,12 +331,13 @@ export default function ToolkitScreen() {
                         {list.map((ch) => {
                           const fgNow = c[tone.fg];
                           const bgNow = c[tone.bg];
+                          const locked = !signedIn && startPageOf(ch.page_range) > FREE_PAGE_LIMIT;
                           return (
                             <Pressable
                               key={ch.id}
                               onPress={() => openChapter(ch)}
                               accessibilityRole="button"
-                              accessibilityLabel={`${ch.title}, page ${ch.page_range}`}
+                              accessibilityLabel={`${ch.title}, page ${ch.page_range}${locked ? ", locked" : ""}`}
                               style={({ pressed }) => [
                                 styles.chapterRow,
                                 { backgroundColor: c.surface },
@@ -279,7 +357,11 @@ export default function ToolkitScreen() {
                                   p. {ch.page_range}
                                 </Text>
                               </View>
-                              <MaterialCommunityIcons name="chevron-right" size={20} color={c.textMuted} />
+                              <MaterialCommunityIcons
+                                name={locked ? "lock-outline" : "chevron-right"}
+                                size={20}
+                                color={locked ? c.secondary : c.textMuted}
+                              />
                             </Pressable>
                           );
                         })}
@@ -292,10 +374,130 @@ export default function ToolkitScreen() {
           ) : null}
         </View>
       </View>
-      {prompt}
     </View>
   );
 }
+
+/**
+ * Imperative handle for the signed-out preview — lets the parent jump to a page
+ * (chapter rows, "beyond the free pages") without re-rendering the toolkit.
+ */
+interface PreviewHandle {
+  goTo: (pageNo: number) => void;
+}
+
+/**
+ * Signed-out reading surface.
+ *
+ * Pages 1..FREE_PAGE_LIMIT are each rendered as their own single-page Pdf and
+ * stacked in a plain ScrollView, so the reader scrolls them freely. The slot
+ * after the last free page is a lock page (lock icon + "Sign in with Google") —
+ * the modern "locked page" idiom. No modal ever appears and the toolkit is
+ * never re-rendered or scroll-blocked; signing in just swaps this out for the
+ * full Pdf.
+ *
+ * Each row is `pointerEvents="none"`: on Android `singlePage` installs a touch
+ * listener that swallows gestures, which would otherwise steal the scroll from
+ * the parent ScrollView.
+ */
+const FreePreview = forwardRef<
+  PreviewHandle,
+  {
+    source: Source;
+    onPageChange: (page: number) => void;
+    onTotal: (total: number) => void;
+    onError: (message: string) => void;
+  }
+>(function FreePreview({ source, onPageChange, onTotal, onError }, ref) {
+  const { mode } = useAppTheme();
+  const c = colors[mode];
+  const [pageAspect, setPageAspect] = useState<number | null>(null);
+  const width = Dimensions.get("window").width;
+  const scrollRef = useRef<ScrollView>(null);
+
+  const rowHeight = pageAspect ? Math.round(width * pageAspect) : Math.round(width * 1.414);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      goTo: (pageNo: number) => {
+        scrollRef.current?.scrollTo({
+          y: Math.max(0, pageNo - 1) * rowHeight,
+          animated: true,
+        });
+      },
+    }),
+    [rowHeight],
+  );
+
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const p = Math.min(FREE_PAGE_LIMIT, Math.max(1, Math.round(y / rowHeight) + 1));
+    onPageChange(p);
+  };
+
+  return (
+    <ScrollView
+      ref={scrollRef}
+      style={styles.previewScroll}
+      contentContainerStyle={styles.previewContent}
+      onScroll={handleScroll}
+      scrollEventThrottle={80}
+      showsVerticalScrollIndicator={false}
+    >
+      {Array.from({ length: FREE_PAGE_LIMIT }, (_, i) => i + 1).map((n) => (
+        <View key={n} pointerEvents="none" style={{ width, height: rowHeight }}>
+          <Pdf
+            source={source}
+            page={n}
+            singlePage
+            fitPolicy={0}
+            spacing={0}
+            scrollEnabled={false}
+            enableDoubleTapZoom={false}
+            trustAllCerts={false}
+            style={{ width, height: rowHeight }}
+            onLoadComplete={(numberOfPages, _path, size) => {
+              if (size?.width) setPageAspect(size.height / size.width);
+              onTotal(numberOfPages);
+            }}
+            onError={(e) => onError(String(e))}
+          />
+        </View>
+      ))}
+
+      {/* The "page 11" slot — a lock page, not a modal. */}
+      <View
+        style={[
+          styles.lockPage,
+          { minHeight: rowHeight, backgroundColor: c.surface, borderColor: c.divider },
+        ]}
+      >
+        <View style={[styles.lockMedallion, { backgroundColor: c.secondaryTint }]}>
+          <MaterialCommunityIcons name="lock" size={30} color={c.secondary} />
+        </View>
+        <Text style={[styles.lockTitle, { color: c.text }]}>The rest of the Toolkit is locked</Text>
+        <Text style={[styles.lockBody, { color: c.textMuted }]}>
+          You've read the free pages. Sign in with Google to open the full workbook —
+          everything you read stays private to your account.
+        </Text>
+        <M3Button
+          label="Sign in with Google"
+          icon="google"
+          iconRight
+          color={c.secondaryActive}
+          onPress={() => {
+            void signInWithGoogle();
+          }}
+          style={styles.lockButton}
+        />
+        <Text style={[styles.lockNote, { color: c.textFaint }]}>
+          You can keep re-reading the first {FREE_PAGE_LIMIT} pages any time.
+        </Text>
+      </View>
+    </ScrollView>
+  );
+});
 
 function ChaptersSkeleton() {
   const { mode } = useAppTheme();
@@ -385,6 +587,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   pdf: { flex: 1, width: Dimensions.get("window").width },
+  previewScroll: { flex: 1 },
+  previewContent: { paddingBottom: 96 },
   loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 24 },
   loadingCard: { width: "70%", height: 200 },
   loadingText: { fontSize: 13, fontWeight: "600" },
@@ -404,4 +608,24 @@ const styles = StyleSheet.create({
   emptyDesc: { marginTop: 6, fontSize: 14, lineHeight: 20, textAlign: "center", maxWidth: 280 },
   skelNum: { width: 40, height: 40, borderRadius: 12 },
   skelSub: { marginTop: 6 },
+  lockPage: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 28,
+    paddingVertical: 36,
+    gap: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  lockMedallion: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  lockTitle: { fontSize: 18, lineHeight: 26, fontWeight: "800", textAlign: "center" },
+  lockBody: { fontSize: 14, lineHeight: 21, textAlign: "center", maxWidth: 300 },
+  lockButton: { marginTop: 8, minWidth: 220 },
+  lockNote: { fontSize: 12.5, lineHeight: 18, textAlign: "center", marginTop: 4 },
 });

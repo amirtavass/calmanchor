@@ -11,6 +11,7 @@ import {
 } from "../../lib/db";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { colors } from "../../theme/tokens";
+import { useSession } from "../../lib/auth";
 
 interface EntryRow {
   id: string;
@@ -31,6 +32,7 @@ export default function EntryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { mode } = useAppTheme();
   const c = colors[mode];
+  const { signedIn } = useSession();
 
   const [entry, setEntry] = useState<EntryRow | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,6 +44,11 @@ export default function EntryDetailScreen() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    if (!signedIn) {
+      setEntry(null);
+      setLoading(false);
+      return;
+    }
     (async () => {
       try {
         const rows = await getJournalEntries();
@@ -54,7 +61,7 @@ export default function EntryDetailScreen() {
         setLoading(false);
       }
     })();
-  }, [id]);
+  }, [id, signedIn]);
 
   const withinEditWindow = (createdAt: string) => {
     const created = new Date(createdAt);

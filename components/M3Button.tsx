@@ -20,6 +20,31 @@ import { colors } from "../theme/tokens";
  *              `selected` flips it to filled; `color` overrides the accent
  *   text     — transparent, `primary` label (used for "Skip" / text actions)
  */
+/** Relative luminance of a #rrggbb colour (WCAG 2.x), or null if unparseable. */
+function luminance(hex: string): number | null {
+  const h = hex.replace("#", "");
+  if (h.length !== 6) return null;
+  const channel = (i: number) => {
+    const v = parseInt(h.slice(i, i + 2), 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
+}
+
+/**
+ * Pick the most legible content colour for a solid fill: the lighter of the
+ * theme's near-white / near-black, whichever has the higher WCAG contrast.
+ * Using the fill itself (rather than the background-relative `textInverse`)
+ * means a green/light fill can never swallow its label.
+ */
+function readableOn(fill: string): string {
+  const l = luminance(fill);
+  if (l === null) return "#FFFFFF";
+  const light = (1.0 + 0.05) / (l + 0.05);
+  const dark = (l + 0.05) / (0.0 + 0.05);
+  return light >= dark ? "#FFFFFF" : "#1A1A13";
+}
+
 export default function M3Button({
   label,
   onPress,
@@ -30,6 +55,7 @@ export default function M3Button({
   variant = "filled",
   selected,
   color,
+  textColor,
 }: {
   label: string;
   onPress: () => void;
@@ -40,6 +66,7 @@ export default function M3Button({
   variant?: "filled" | "outlined" | "text";
   selected?: boolean;
   color?: string;
+  textColor?: string;
 }) {
   const { mode } = useAppTheme();
   const c = colors[mode];
@@ -52,7 +79,8 @@ export default function M3Button({
   if (!disabled) {
     if (variant === "filled" || (variant === "outlined" && selected)) {
       containerColor = color ?? c.primary;
-      contentColor = c.textInverse;
+      contentColor = textColor ?? readableOn(containerColor);
+      borderColor = color ?? c.primary;
     } else if (variant === "outlined") {
       containerColor = "transparent";
       contentColor = color ?? c.primary;
@@ -79,6 +107,7 @@ export default function M3Button({
       accessibilityLabel={label}
       style={[
         styles.wrap,
+        { backgroundColor: containerColor },
         variant === "outlined" ? { borderWidth: 1, borderColor } : null,
         style,
       ]}
@@ -104,11 +133,12 @@ export default function M3Button({
 
 const styles = StyleSheet.create({
   wrap: {
+    height: 40,
     borderRadius: 20,
     overflow: "hidden",
   },
   btn: {
-    height: 40,
+    flex: 1,
     paddingHorizontal: 16,
     flexDirection: "row",
     alignItems: "center",

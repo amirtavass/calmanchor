@@ -29,9 +29,9 @@ export default function LockedAccessCard({
         </View>
         <View style={styles.copy}>
           <Text style={[styles.title, { color: c.text }]}>{title}</Text>
-          <Text style={[styles.message, { color: c.textMuted }]}>{message}</Text>
         </View>
       </View>
+      <Text style={[styles.message, { color: c.textMuted }]}>{message}</Text>
       <M3Button
         label={buttonLabel}
         icon="google"
@@ -56,5 +56,5 @@ const styles = StyleSheet.create({
   copy: { flex: 1 },
   title: { fontSize: 16, lineHeight: 24, fontWeight: "700" },
   message: { marginTop: 2, fontSize: 14, lineHeight: 21 },
-  button: { alignSelf: "flex-end", marginTop: 14 },
+  button: { alignSelf: "center", marginTop: 14 },
 });

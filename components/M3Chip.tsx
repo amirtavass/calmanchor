@@ -52,11 +52,6 @@ export default function M3Chip({
   }, [selected, prog]);
 
   if (tint) {
-    const bg = prog.interpolate({ inputRange: [0, 1], outputRange: [tint.bg, tint.fg] });
-    const content = prog.interpolate({
-      inputRange: [0, 1],
-      outputRange: [tint.fg, c.textInverse],
-    });
     return (
       <TouchableRipple
         onPress={onPress}
@@ -66,11 +61,15 @@ export default function M3Chip({
         accessibilityState={{ selected }}
         accessibilityLabel={selected ? `${label}, selected` : label}
       >
-        <Animated.View style={[styles.tintPill, { backgroundColor: bg, borderColor: tint.fg }]}>
+        <Animated.View
+          style={[styles.tintPill, { backgroundColor: selected ? tint.fg : tint.bg, borderColor: tint.fg }]}
+        >
           {icon ? (
             <MaterialCommunityIcons name={icon} size={18} color={selected ? c.textInverse : tint.fg} />
           ) : null}
-          <Animated.Text style={[styles.tintLabel, { color: content }]}>{label}</Animated.Text>
+          <Animated.Text style={[styles.tintLabel, { color: selected ? c.textInverse : tint.fg }]}>
+            {label}
+          </Animated.Text>
         </Animated.View>
       </TouchableRipple>
     );

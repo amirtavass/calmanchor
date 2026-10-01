@@ -16,6 +16,7 @@ import {
 } from "../../types/exercise";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { colors } from "../../theme/tokens";
+import { useSession } from "../../lib/auth";
 
 /**
  * Exercises landing — 04-landing D2 "Colour fields".
@@ -27,6 +28,7 @@ export default function ExercisesScreen() {
   const router = useRouter();
   const { mode } = useAppTheme();
   const c = colors[mode];
+  const { signedIn } = useSession();
 
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,29 +36,46 @@ export default function ExercisesScreen() {
   const [stateFilter, setStateFilter] = useState<string | null>(null);
   const [recentSession, setRecentSession] = useState<SessionRow | null>(null);
 
+  // The exercise catalogue is public content (S01 browse-first) — load it for
+  // everyone, signed in or not, so the tab always renders its content.
   useEffect(() => {
+    let active = true;
     (async () => {
       try {
         const data = await getAllExercises();
-        setExercises(data ?? []);
+        if (active) setExercises(data ?? []);
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        if (active) setError(e instanceof Error ? e.message : String(e));
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     })();
+    return () => {
+      active = false;
+    };
   }, []);
 
+  // "Done today" is the user's own history. `getSessions()` prompts Google
+  // sign-in (ensureSignedIn), so it must only run when already signed in —
+  // never on tab mount, or merely opening the tab pops the sign-in browser.
   useEffect(() => {
+    if (!signedIn) {
+      setRecentSession(null);
+      return;
+    }
+    let active = true;
     (async () => {
       try {
         const s = await getSessions();
-        if (s && s.length) setRecentSession(s[0]);
+        if (active && s && s.length) setRecentSession(s[0]);
       } catch {
-        // Not signed in (or offline) — the done-today row simply stays hidden.
+        // Offline — the done-today row simply stays hidden.
       }
     })();
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [signedIn]);
 
   const counts: Record<string, number> = {};
   for (const ex of exercises) counts[ex.category] = (counts[ex.category] ?? 0) + 1;
@@ -294,6 +313,7 @@ const styles = StyleSheet.create({
   sectionSub: { marginBottom: 16, fontSize: 14, lineHeight: 20 },
   doneCard: {
     marginTop: 16,
+    marginBottom: 20,
     padding: 12,
     borderRadius: 12,
     borderWidth: 1,

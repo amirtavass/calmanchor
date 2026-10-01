@@ -147,6 +147,7 @@ export default function ProfileIndexScreen() {
                 setBusy(true);
                 try {
                   await signOut();
+                  router.replace("/(tabs)");
                 } finally {
                   setBusy(false);
                 }

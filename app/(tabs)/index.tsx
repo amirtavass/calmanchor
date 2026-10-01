@@ -458,14 +458,22 @@ function SignedOutHome({ onSignIn, prompt }: { onSignIn: () => void; prompt: Rea
     <View style={[styles.root, { backgroundColor: c.bg }]}>
       <ScreenHeader title="Calm Anchor" />
       <ScrollView contentContainerStyle={styles.body}>
-        <M3Card fill={c.surface} style={styles.signedOutHero}>
-          <View style={[styles.signedOutIcon, { backgroundColor: c.secondaryTint }]}>
-            <MaterialCommunityIcons name="anchor" size={28} color={c.secondary} />
+        <M3Card fill={c.secondaryTint} style={styles.signedOutHero}>
+          <View style={styles.signedOutIntro}>
+            <View style={[styles.signedOutIcon, { backgroundColor: c.secondarySubtle }]}>
+              <MaterialCommunityIcons name="anchor" size={28} color={c.secondary} />
+            </View>
+            <View style={styles.signedOutIntroCopy}>
+              <Text style={[styles.signedOutEyebrow, { color: c.secondary }]}>START HERE</Text>
+              <Text style={[styles.signedOutTitle, { color: c.text }]}>A calm place to begin</Text>
+            </View>
           </View>
-          <Text style={[styles.signedOutTitle, { color: c.text }]}>A calm place to begin</Text>
-          <Text style={[styles.signedOutBody, { color: c.textMuted }]}>Explore grounding, breathing and nervous-system exercises at your own pace.</Text>
+          <Text style={[styles.signedOutBody, { color: c.text }]}>Explore grounding, breathing and nervous-system exercises at your own pace.</Text>
           <M3Button label="Sign in with Google" icon="google" color={c.secondaryActive} onPress={onSignIn} />
-          <Text style={[styles.signedOutNote, { color: c.textMuted }]}>You can browse without an account. Sign in when you want to save sessions, journal entries or progress.</Text>
+          <View style={[styles.signedOutNoteRow, { borderTopColor: c.secondarySubtle }]}>
+            <MaterialCommunityIcons name="lock-outline" size={16} color={c.secondary} />
+            <Text style={[styles.signedOutNote, { color: c.secondary }]}>You can browse without an account. Sign in when you want to save sessions, journal entries or progress.</Text>
+          </View>
         </M3Card>
 
         <Text style={[styles.sectionTitle, { color: c.text }]}>Start here</Text>
@@ -564,17 +572,20 @@ const styles = StyleSheet.create({
   tileLabel: { marginTop: 8, fontSize: 16, lineHeight: 24, fontWeight: "700" },
   tileDetail: { marginTop: 2, fontSize: 12, lineHeight: 16, fontWeight: "500" },
   signedOutHero: { marginTop: 4 },
+  signedOutIntro: { flexDirection: "row", alignItems: "center", gap: 12 },
+  signedOutIntroCopy: { flex: 1 },
   signedOutIcon: {
     width: 56,
     height: 56,
     borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 14,
   },
+  signedOutEyebrow: { fontSize: 11.5, lineHeight: 16, fontWeight: "800", letterSpacing: 0.7 },
   signedOutTitle: { fontSize: 22, lineHeight: 28, fontWeight: "800" },
   signedOutBody: { marginTop: 8, fontSize: 14, lineHeight: 21, marginBottom: 18 },
-  signedOutNote: { marginTop: 12, fontSize: 13, lineHeight: 19 },
+  signedOutNoteRow: { flexDirection: "row", alignItems: "flex-start", gap: 8, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12, marginTop: 14 },
+  signedOutNote: { flex: 1, fontSize: 13, lineHeight: 19 },
   unlockRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 },
   unlockBorder: { borderTopWidth: StyleSheet.hairlineWidth },
   unlockIcon: {
