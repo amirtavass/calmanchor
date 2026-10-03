@@ -2,7 +2,10 @@
 
 > **Concern:** how the app goes from "reads mock numbers" to "reads real Supabase data for the
 > signed-in user", and how Google sign-in becomes visible/live in the UI.
-> **Status:** Phase A **implemented** (2026-09-17); Phases B & C are design-only (not yet built).
+> **Status:** Phase A **implemented** (2026-09-17) and Phase B **implemented** (2026-10-03);
+> Phase C (verification & sign-off) is design-only and the on-device half is still open.
+> Phase B shipped as `getDashboardStats()` + `components/CheckInCard.tsx` (M3-02/M3-03) —
+> see the 2026-10-03 changelog. **B4 (generated Supabase types) is the one Phase B item not done.**
 > **Sources:** `docs/schema-coaching/01-user-stories.md` (S01–S29), `docs/decisions/ADR-002`
 > (Google-only auth), **meetings** (`Meetings.txt`: 26 Aug, 28 Aug, 02 Sep), M3-02/M3-03 in
 > `docs/progress/milestones/m3-full-feature-set.md`, `docs/ui/sections/home/00-dashboard.md`.
@@ -92,32 +95,33 @@ and the post-sign-in research-profile questions (28 Aug §6) are not shown.
 - Dashboard shows a gentle nudge card → `app/profile/questions.tsx` (five optional questions, each
   with "Prefer not to say", saved via `saveProfile()`). Asked once.
 
-### Phase B — Dashboard reads real Supabase data (M3-02, M3-03)
+### Phase B — Dashboard reads real Supabase data (M3-02, M3-03) ✅ SHIPPED 2026-10-03
 
-**B1. Add a `getDashboardStats()` query in `lib/db.ts`** returning one object:
+**B1. Add a `getDashboardStats()` query in `lib/db.ts`** ✅ returning one object:
 - `sessions: number` — count of `exercise_sessions` for `auth.uid()` (lean `.select("id")`).
 - `streak: number` — consecutive days ending today (or yesterday if today has none yet) where the
   user has **either** an `exercise_sessions` row **or** a `checkins` row. Query distinct dates from
   both tables, walk back day-by-day; stop at the first gap. *Decision to confirm:* streak source =
   sessions only, or sessions + check-ins (recommended: sessions only for a pure "exercise streak";
-  record whichever is agreed).
+  record whichever is agreed). **→ Implemented as sessions only — confirmed by Aamir
+  2026-10-03** (the recommendation above).
 - `week: { day, state, height }[]` + `inWindowPct` — last 7 calendar days, one bar per day. State
   per day = the **last** `checkins.ns_state` of that day; map `window`/`regulated` → "window",
   `hyper`/`hypo`/`dysregulated` → out-of-window; no check-in that day → neutral/absent bar (today
   keeps the dashed no-fill style). `inWindowPct` = in-window days ÷ days-with-data (guard ÷ 0 → 0).
 
-**B2. Check-in data dependency (M3-02).** The weekly window chart reads `checkins`, so it only has
+**B2. Check-in data dependency (M3-02).** ✅ SHIPPED — `components/CheckInCard.tsx` on Home. The weekly window chart reads `checkins`, so it only has
 real shape once check-ins exist. Today they come from the diary trigger tracker (M2-05). For the
 chart to be meaningful, add the **daily check-in card on Home** (M3-02): ns_state + survival
 response + triggers → `saveCheckin()`. Sequence: M3-02 check-in card → then B1 stats have data.
 
-**B3. Wire the dashboard.**
+**B3. Wire the dashboard.** ✅ SHIPPED
 - Replace the hardcoded `thisWeek` array, `"5d"`, and `"12"` fallback with `getDashboardStats()`.
 - Add the dashboard loading skeleton (`M3Skeleton`/`SkeletonTextStack`) while awaiting.
 - Signed-out / error state: hide the three stat values behind a light "Sign in to see your stats"
   affordance (design §21 keeps the layout stable); never show fabricated numbers.
 
-**B4. Typing.** Generate real Supabase types (`npx supabase gen types typescript`) into
+**B4. Typing.** ⏳ NOT DONE — the one Phase B item left. Generate real Supabase types (`npx supabase gen types typescript`) into
 `supabase/database.types.ts` and type `getDashboardStats` returns from it; hand-written row
 interfaces in `lib/db.ts` can then be replaced incrementally (02 Sep: schema is the source of truth).
 

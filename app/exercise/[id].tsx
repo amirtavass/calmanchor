@@ -7,7 +7,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import M3Button from "../../components/M3Button";
 import ExerciseLoadingScreen from "../../components/ExerciseLoadingScreen";
 import { useSignInGate } from "../../components/SignInPrompt";
-import { getAllExercises } from "../../lib/db";
+import {
+  addFavourite,
+  getAllExercises,
+  getFavouriteExerciseIds,
+  removeFavourite,
+} from "../../lib/db";
 import {
   CATEGORIES,
   CATEGORY_TOKENS,
@@ -46,12 +51,14 @@ export default function ExerciseDetailScreen() {
   const [exercise, setExercise] = useState<Exercise | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [favourited, setFavourited] = useState(false);
+  const [favBusy, setFavBusy] = useState(false);
 
   // A4: sign-in gate at the first exercise attempt (S01; 28 Aug §6). Tapping
   // "Start exercise" when signed out shows the soft card instead of a throw.
   const { gate: gateStart, prompt: signInPrompt, signedIn } = useSignInGate({
     message:
-      "Sign in with Google to log your session and keep it in your history. You can browse freely either way.",
+      "Sign in with Google to save your session and your portfolio. You can browse freely either way.",
   });
 
   useEffect(() => {
@@ -66,6 +73,43 @@ export default function ExerciseDetailScreen() {
       }
     })();
   }, [id]);
+
+  // M3-04: the ★ state. Non-prompting read — never opens Google on its own.
+  useEffect(() => {
+    if (!signedIn || !id) {
+      setFavourited(false);
+      return;
+    }
+    let active = true;
+    getFavouriteExerciseIds()
+      .then((set) => active && setFavourited(set.has(id)))
+      .catch(() => active && setFavourited(false));
+    return () => {
+      active = false;
+    };
+  }, [signedIn, id]);
+
+  const toggleFavourite = () => {
+    if (favBusy || !exercise) return;
+    gateStart(() => {
+      void (async () => {
+        setFavBusy(true);
+        try {
+          if (favourited) {
+            await removeFavourite(exercise.id);
+            setFavourited(false);
+          } else {
+            await addFavourite(exercise.id);
+            setFavourited(true);
+          }
+        } catch {
+          // Keep the previous state rather than flicker the star.
+        } finally {
+          setFavBusy(false);
+        }
+      })();
+    });
+  };
 
   const catKey = (exercise?.category as ExerciseCategory) ?? "breathing";
   const t = CATEGORY_TOKENS[catKey in CATEGORY_TOKENS ? catKey : "breathing"];
@@ -190,13 +234,37 @@ export default function ExerciseDetailScreen() {
               : "Sign-in saves your session to your history — you can read freely first."}
           </Text>
         </View>
-        <M3Button
-          label="Start exercise"
-          icon="play"
-          color={tone.fg}
-          onPress={() => gateStart(() => router.push(`/exercise/session/${exercise.id}`))}
-          style={styles.startBtn}
-        />
+        <View style={styles.actionRow}>
+          {/* M3-04 ★ — "one deliberate human touch" (craft §8: warmGold on favourites) */}
+          <Pressable
+            onPress={toggleFavourite}
+            disabled={favBusy}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityState={{ selected: favourited, disabled: favBusy }}
+            accessibilityLabel={favourited ? "Saved to Portfolio" : "Add to Portfolio"}
+            style={[
+              styles.favBtn,
+              {
+                backgroundColor: favourited ? c.warmGold : c.surfaceOffset2,
+                borderColor: favourited ? c.warmGold : c.divider,
+              },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name={favourited ? "star" : "star-outline"}
+              size={22}
+              color={favourited ? c.textInverse : c.textMuted}
+            />
+          </Pressable>
+          <M3Button
+            label="Start exercise"
+            icon="play"
+            color={tone.fg}
+            onPress={() => gateStart(() => router.push(`/exercise/session/${exercise.id}`))}
+            style={styles.startBtn}
+          />
+        </View>
       </View>
       {signInPrompt}
     </View>
@@ -290,5 +358,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   signinText: { fontSize: 12, opacity: 0.9, flexShrink: 1 },
-  startBtn: { alignSelf: "stretch" },
+  actionRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  favBtn: {
+    width: 52,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  startBtn: { flex: 1 },
 });

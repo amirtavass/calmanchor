@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { Text } from "react-native-paper";
@@ -7,9 +7,18 @@ import { useRouter } from "expo-router";
 import ScreenHeader from "../../components/ScreenHeader";
 import M3Button from "../../components/M3Button";
 import M3Card from "../../components/M3Card";
+import M3Skeleton from "../../components/M3Skeleton";
+import CheckInCard from "../../components/CheckInCard";
 import LockedAccessCard from "../../components/LockedAccessCard";
 import { useSignInGate } from "../../components/SignInPrompt";
-import { getSessions, getJournalEntries, getCurrentUser, getResearchProfile } from "../../lib/db";
+import {
+  getSessions,
+  getJournalEntries,
+  getCurrentUser,
+  getResearchProfile,
+  getDashboardStats,
+  type DashboardStats,
+} from "../../lib/db";
 import { useSession } from "../../lib/auth";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { colors } from "../../theme/tokens";
@@ -36,15 +45,17 @@ export default function HomeScreen() {
   const { gate, prompt } = useSignInGate();
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [needsResearchProfile, setNeedsResearchProfile] = useState(false);
-  const [sessionCount, setSessionCount] = useState<number | null>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentSession, setRecentSession] = useState<SessionRow | null>(null);
   const [recentEntry, setRecentEntry] = useState<EntryRow | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const checkinY = useRef(0);
 
   useEffect(() => {
     if (!signedIn) {
       setDisplayName(null);
       setNeedsResearchProfile(false);
-      setSessionCount(null);
+      setStats(null);
       setRecentSession(null);
       setRecentEntry(null);
       return;
@@ -63,11 +74,15 @@ export default function HomeScreen() {
         // Non-critical — don't nag if we can't confirm.
       }
       try {
+        setStats(await getDashboardStats());
+      } catch {
+        // Not signed in (or offline) — the stat cards show dashes, never numbers.
+      }
+      try {
         const s = await getSessions();
-        setSessionCount(s?.length ?? 0);
         if (s && s.length) setRecentSession(s[0]);
       } catch {
-        // Not signed in (or offline) — stats/activity stay hidden.
+        // Recent activity stays hidden.
       }
       try {
         const j = await getJournalEntries();
@@ -77,6 +92,14 @@ export default function HomeScreen() {
       }
     })();
   }, [signedIn, userId]);
+
+  const refreshStats = async () => {
+    try {
+      setStats(await getDashboardStats());
+    } catch {
+      // Keep the last known stats rather than blanking the row.
+    }
+  };
 
   const now = new Date();
   const dateLabel = now.toLocaleDateString("en-GB", {
@@ -112,19 +135,14 @@ export default function HomeScreen() {
     { label: "Crisis", icon: "lifebuoy" as const, fg: c.exCrisis, bg: c.exCrisisBg, route: "/crisis/index" },
   ];
 
-  // Design-system §11 — App Screen Sketch. Dummy weekly bars until M3 wiring.
-  // Today is dashed (no fill) so the chart still looks alive pre-data.
-  const thisWeek: { day: string; state: "window" | "hyper" | "hypo" | "today"; height: number }[] = [
-    { day: "Mon", state: "window", height: 28 },
-    { day: "Tue", state: "hyper", height: 18 },
-    { day: "Wed", state: "window", height: 24 },
-    { day: "Thu", state: "hypo", height: 14 },
-    { day: "Fri", state: "window", height: 32 },
-    { day: "Sat", state: "window", height: 22 },
-    { day: "Today", state: "today", height: 24 },
-  ];
-  const daysInWindow = thisWeek.filter((d) => d.state === "window").length;
-  const inWindowPct = Math.round((daysInWindow / 6) * 100);
+  // Design-system §11 — weekly window-of-tolerance bars, now wired to real
+  // check-ins (M3-03). The bar carries the *state* of the day's last check-in,
+  // never a wellbeing metric (S26/D03). Days without a check-in are a quiet
+  // stub; today keeps the dashed treatment until it has data.
+  const week = stats?.week ?? [];
+  const daysInWindow = stats?.daysInWindow ?? 0;
+  const daysWithState = stats?.daysWithState ?? 0;
+  const inWindowPct = stats?.inWindowPct ?? 0;
 
   if (!signedIn) {
     return <SignedOutHome onSignIn={() => gate(() => undefined)} prompt={prompt} />;
@@ -136,7 +154,7 @@ export default function HomeScreen() {
       <ScreenHeader title="Calm Anchor" />
 
       {/* Zone 2 · content */}
-      <ScrollView contentContainerStyle={styles.body}>
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.body}>
         {/* Greeting card — anchored at the top of the day. Featured warm tone,
             gives the user the date + greeting + a single supportive sentence +
             a route into the profile (replacing the top-right avatar). */}
@@ -189,24 +207,40 @@ export default function HomeScreen() {
           />
         </Pressable>
 
-        {/* Stats row — sessions real when signed in; streak + window are dummy
-            placeholders until M3 wiring (design-system §11 supplies the chart).
-            Toned-down palette: accent (sage) and warmGold replace primary green. */}
+        {/* Stats row — M3-03, real counts from exercise_sessions + checkins.
+            Descriptive only: no wellbeing trend is derived (S26/D03). A missing
+            value shows a dash, never an illustrative number. */}
         <View style={styles.statsRow}>
-          <View style={[styles.statCard, { backgroundColor: c.surface }]}>
-            <Text style={[styles.statValue, { color: c.accent }]}>
-              {sessionCount != null ? sessionCount : "12"}
-            </Text>
-            <Text style={[styles.statLabel, { color: c.textMuted }]}>Sessions</Text>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: c.surface }]}>
-            <Text style={[styles.statValue, { color: c.warmGoldSubtle }]}>5d</Text>
-            <Text style={[styles.statLabel, { color: c.textMuted }]}>Streak</Text>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: c.surface }]}>
-            <Text style={[styles.statValue, { color: c.secondary }]}>{inWindowPct}%</Text>
-            <Text style={[styles.statLabel, { color: c.textMuted }]}>In window</Text>
-          </View>
+          {(["Sessions", "Streak", "In window"] as const).map((label) => (
+            <View key={label} style={[styles.statCard, { backgroundColor: c.surface }]}>
+              {stats === null ? (
+                <M3Skeleton variant="text-multi" width={48} style={{ marginBottom: 0, alignSelf: "center" }} />
+              ) : (
+                <Text
+                  style={[
+                    styles.statValue,
+                    {
+                      color:
+                        label === "Sessions" ? c.accent : label === "Streak" ? c.warmGoldSubtle : c.secondary,
+                    },
+                  ]}
+                >
+                  {label === "Sessions"
+                    ? stats.sessions
+                    : label === "Streak"
+                    ? `${stats.streak}d`
+                    : `${inWindowPct}%`}
+                </Text>
+              )}
+              <Text style={[styles.statLabel, { color: c.textMuted }]}>{label}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* M3-02 daily check-in — the Home vertical's first action (IA §3):
+            ns_state + survival response + optional trigger/note → saveCheckin. */}
+        <View onLayout={(e) => (checkinY.current = e.nativeEvent.layout.y)}>
+          <CheckInCard onSaved={() => void refreshStats()} />
         </View>
 
         {/* Today's plan */}
@@ -216,13 +250,35 @@ export default function HomeScreen() {
             <Pressable
               style={styles.step}
               accessibilityRole="button"
-              accessibilityLabel="Check-in, done"
-              onPress={() => router.push("/(tabs)/exercises")}
+              accessibilityLabel={
+                stats?.checkedInToday ? "Check-in, done" : "Check-in, current step"
+              }
+              onPress={() =>
+                scrollRef.current?.scrollTo({ y: Math.max(0, checkinY.current - 12), animated: true })
+              }
             >
-              <View style={[styles.stepCircle, { backgroundColor: c.accent }]}>
-                <MaterialCommunityIcons name="check" size={16} color={c.textInverse} />
+              <View
+                style={[
+                  styles.stepCircle,
+                  {
+                    backgroundColor: stats?.checkedInToday ? c.accent : c.secondary,
+                  },
+                ]}
+              >
+                {stats?.checkedInToday ? (
+                  <MaterialCommunityIcons name="check" size={16} color={c.textInverse} />
+                ) : (
+                  <Text style={[styles.stepNumber, { color: c.textInverse }]}>1</Text>
+                )}
               </View>
-              <Text style={[styles.stepLabel, { color: c.textMuted }]}>Check-in</Text>
+              <Text
+                style={[
+                  styles.stepLabel,
+                  { color: stats?.checkedInToday ? c.textMuted : c.text },
+                ]}
+              >
+                Check-in
+              </Text>
             </Pressable>
             <View style={[styles.connector, { backgroundColor: c.divider }]} />
             <Pressable
@@ -264,24 +320,27 @@ export default function HomeScreen() {
           ))}
         </View>
 
-        {/* This week in your window — design-system §11 */}
+        {/* This week in your window — design-system §11, real check-in states */}
         <Text style={[styles.sectionTitle, { color: c.text }]}>This week in your window</Text>
         <View style={[styles.weekCard, { backgroundColor: c.surface }]}>
           <View style={styles.weekHead}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.weekTitle, { color: c.text }]}>Where you spent the week</Text>
               <Text style={[styles.weekSub, { color: c.textMuted }]}>
-                {daysInWindow} of 6 days in window
+                {daysWithState > 0
+                  ? `${daysInWindow} of ${daysWithState} days in window`
+                  : "No check-ins yet this week"}
               </Text>
             </View>
-            <View style={[styles.weekBadge, { backgroundColor: c.nsWindowBg }]}>
-              <MaterialCommunityIcons name="chart-bar" size={14} color={c.nsWindow} />
-              <Text style={[styles.weekBadgeLabel, { color: c.nsWindow }]}>{inWindowPct}%</Text>
-            </View>
+            {daysWithState > 0 ? (
+              <View style={[styles.weekBadge, { backgroundColor: c.nsWindowBg }]}>
+                <MaterialCommunityIcons name="chart-bar" size={14} color={c.nsWindow} />
+                <Text style={[styles.weekBadgeLabel, { color: c.nsWindow }]}>{inWindowPct}%</Text>
+              </View>
+            ) : null}
           </View>
           <View style={styles.weekBars}>
-            {thisWeek.map((d) => {
-              const isToday = d.state === "today";
+            {week.map((d) => {
               const fg =
                 d.state === "window"
                   ? c.nsWindow
@@ -289,15 +348,8 @@ export default function HomeScreen() {
                   ? c.nsHyper
                   : d.state === "hypo"
                   ? c.nsHypo
-                  : c.secondary;
-              const bg =
-                d.state === "window"
-                  ? c.nsWindow
-                  : d.state === "hyper"
-                  ? c.nsHyper
-                  : d.state === "hypo"
-                  ? c.nsHypo
-                  : "transparent";
+                  : c.divider;
+              const filled = d.state !== null;
               return (
                 <View key={d.day} style={styles.weekCol}>
                   <View
@@ -305,10 +357,10 @@ export default function HomeScreen() {
                       styles.weekBar,
                       {
                         height: d.height,
-                        backgroundColor: isToday ? "transparent" : bg,
+                        backgroundColor: filled ? fg : "transparent",
                         borderColor: fg,
-                        borderWidth: isToday ? 1.5 : 0,
-                        borderStyle: isToday ? "dashed" : "solid",
+                        borderWidth: d.isToday || !filled ? 1.5 : 0,
+                        borderStyle: d.isToday || !filled ? "dashed" : "solid",
                       },
                     ]}
                   />
@@ -316,8 +368,8 @@ export default function HomeScreen() {
                     style={[
                       styles.weekLabel,
                       {
-                        color: isToday ? c.text : c.textMuted,
-                        fontWeight: isToday ? "700" : "500",
+                        color: d.isToday ? c.text : c.textMuted,
+                        fontWeight: d.isToday ? "700" : "500",
                       },
                     ]}
                   >

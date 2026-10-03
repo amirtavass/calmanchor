@@ -22,7 +22,7 @@
 │  └─────────────────────────────────┘                  │
 │  ┌──────────┬──────────┬──────────┐                   │
 │  │ Sessions │ Streak   │ In window│   stat cards      │
-│  │  12/real │   5d     │   67%    │   (dummy until M3)│
+│  │  12/real │   5d     │   67%    │   (real · M3-03)  │
 │  └──────────┴──────────┴──────────┘                   │
 │  ┌─────────────────────────────────┐                  │
 │  │ Today's plan                    │  stepper:        │
@@ -58,14 +58,15 @@
 | Name | Greeting says **"Amir"** (mentor: Alex → Amir) | Explicit mentor direction. Profile `display_name` can replace later. |
 | Date | Computed at render: `en-GB` weekday + day + month | Never hard-coded; updates daily. |
 | Window pill | Non-interactive pill: `warmGoldTint` bg + `warmGold` text + `star-four-points` | Design-system chip--selected gold; it is a *state indicator*, not a control — no M3Chip (needs onPress). |
-| Stats | Sessions = real count when signed in, falls back to `12`; Streak = `5d` (warning); In window = `67%` (success) | Engagement vs S26: descriptive only, no mood trend. Dummy values until M3 wires the real aggregator — numbers stay illustrative, never evaluative. |
+| Stats | **Wired 2026-10-03 (M3-03):** Sessions = `exercise_sessions` count; Streak = consecutive days with a session (recorded default — confirm); In window = % of days-with-state that were `window`. Loading shows a skeleton, missing shows `—`, signed-out shows nothing (01-auth-states). **No illustrative fallbacks remain.** | Engagement vs S26: descriptive only, no mood trend. Never evaluative. |
+| Check-in card | **Added 2026-10-03 (M3-02):** `components/CheckInCard.tsx` under the stat row — `ns_state` (3 colour-field chips) + survival response + optional trigger/note → `saveCheckin()`; sign-in at save. Settles into a quiet "Checked in" summary with "Check in again" (append-only, D05). | IA §3 first Home vertical; S25. |
 | Greeting card (top) | `warmGold` (light mode) / `warmGoldTint` (dark mode) bg + 48 dp inverse medallion with time-of-day glyph (`weather-sunset-up` / `white-balance-sunny` / `weather-night`) + uppercase date kicker (warmGoldTint / warmGold) + 22/800 headline ("Good morning|afternoon|evening, Amir") + one supportive sentence that swaps on time of day | Anchors the top of the day; replaces the removed header subtitle. The signed-in account icon in `ScreenHeader` is the canonical Profile entry point; the greeting card is informative rather than the only account control. The reflection sentence is descriptive only — no evaluation, no mood trend (S26). The medallion and accent flip per mode so the card is always readable on its background. |
 | Today's plan | Stepper: Check-in (✓ done) → Exercise (active) → Journal (pending); each step navigates | Mirrors §21; gives 3 one-tap destinations. |
 | Quick actions | Colour-fields tiles in `--ex-*` pairs, MCI glyphs (`weather-windy`, `leaf`, `notebook-edit-outline`, `lifebuoy`) | Reuse the landing tile pattern (§04); colour + icon + word (craft R7). |
 | Recent | Real recent session + entry when signed in; hidden when not | Partial/signed-out degrade (craft §11). |
 | CTA | Full-width `M3Button` → Exercises | The one forward action. |
 | Warm reminder | `exSelfkindBg`/`exSelfkind` Pressable below CTA → `/diary/new`; `hand-heart-outline` 40 dp medallion | Fills the empty space below CTA with a colour-contrast nudge (fifth hue family — pink/rose — so the screen no longer bottoms out blank). |
-| This week chart | 7 bars (Mon–Sat + Today), `--ns-window`/`--ns-hyper`/`--ns-hypo` fills, **Today is dashed-border only** (no fill — pre-data); running tally + percent badge + 3-dot legend | Direct lift from design-system §11 App Screen Sketch. Percent + tally derived locally (`daysInWindow / 6`) until M3 wires the real aggregator. |
+| This week chart | 7 bars (Mon–Sat + Today), `--ns-window`/`--ns-hyper`/`--ns-hypo` fills, **Today is dashed-border only** (no fill — pre-data); running tally + percent badge + 3-dot legend | Direct lift from design-system §11 App Screen Sketch. Percent + tally now derived from real check-ins (`X of Y days in window`, Y = days-with-state; badge hidden at zero). **Wired 2026-10-03 (M3-03).** |
 | Icons | All MaterialCommunityIcons, typed | Craft §9 / rules §2.1 — no emoji. |
 
 ## 3. Craft cross-check (03-screen-craft §13)

@@ -2,6 +2,92 @@
 
 Append-only record of changes (decisions + progress). Newest first. Never edit or delete a past entry.
 
+## 2026-10-03 — Phase A + B: live dashboard data, Home check-in card, Portfolio tab
+
+Phases A and B of the phased plan agreed this week (dashboard first, then workbook +
+portfolio). Delivers **M3-02**, **M3-03**, **M3-04**. **M3-05 (remaining workbook
+sections) is not started** — see the blocker note at the end.
+
+### M3-03 — dashboard reads real data (Phase A)
+
+- **`lib/db.ts` `getDashboardStats()`** — one call returning `sessions`, `streak`, `week`
+  (7 local days) + `inWindowPct`. Two lean selects (`exercise_sessions.started_at`,
+  `checkins.created_at, ns_state`) computed client-side; no schema change.
+- **`app/(tabs)/index.tsx`** — the three mock values are gone. Sessions `"12"` fallback,
+  Streak `"5d"` and the dummy `thisWeek` array / `67%` are replaced by real figures;
+  missing values render `—` and a skeleton row while loading. **No fabricated numbers is
+  now enforced** (01-auth-states: signed-out shows no stats at all).
+- **Weekly window chart** (design-system §11) now carries the *state* of each day's last
+  check-in (`window` / `hyper` / `hypo`). Days with no check-in are a quiet dashed stub;
+  today is dashed until it has data. The tally reads `X of Y days in window` where Y is
+  days-with-state, and the % badge disappears entirely at zero (honest empty state).
+- **Recorded default (needs Aamir's confirmation):** streak counts **exercise sessions
+  only**, per the recommendation in `08-live-data-and-auth-wiring.md` B1. Not combined
+  with check-ins. `types/checkin.ts nsBucket()` normalises stored `ns_state` values
+  (`window|regulated` → window, `hyper|dysregulated` → hyper, `hypo|shutdown` → hypo)
+  so old rows read correctly.
+
+### M3-02 — daily check-in card on Home (Phase A)
+
+- **`components/CheckInCard.tsx`** (new) — `ns_state` + survival response as colour-field
+  chips (colour + glyph + word, craft R7), plus an optional "Add more detail" expander for
+  trigger + note. Saves via `saveCheckin()` (S25); sign-in prompted at save (S01).
+- After saving the card settles into a quiet "Checked in" summary with **"Check in again"**
+  — multiple check-ins a day stay allowed (append-only, D05), so the card never locks.
+- **Today's plan stepper** on the dashboard now reflects reality: the Check-in step shows
+  ✓ once today has a check-in, and tapping it scrolls to the card (was: a hardcoded ✓ that
+  navigated to Exercises).
+- `types/checkin.ts` (new) holds the shared `NS_OPTIONS` / `SR_OPTIONS` vocabulary;
+  `app/diary/trigger.tsx` now imports it instead of its own copy — the two check-in
+  surfaces can no longer drift apart.
+
+### M3-04 — Portfolio tab (Phase B)
+
+- **Schema (new tables, owner-only RLS, timestamps):** `favourites`
+  (`unique(user_id, exercise_id)`), `safe_space_notes`, `custom_strategies`.
+  Canonical definitions added to `supabase/schema.sql` + `supabase/rls.sql`; **safe additive
+  migration for the live DB: `supabase/2026-10-03-portfolio.sql`** (schema.sql is a full
+  rebuild and would wipe user data — do not re-run it against live).
+- **`app/(tabs)/portfolio.tsx`** — rebuilt from the placeholder into three sections:
+  favourite exercises (rows jump to the exercise), safe-space notes, custom strategies.
+  Each has its own empty state, add composer, inline edit and inline-confirm delete
+  (never an `Alert`). Skeleton rows while loading; signed-out shows `LockedAccessCard`.
+- **`app/exercise/[id].tsx`** — the ★ "Add to Portfolio" action from
+  `02-exercise-detail.md` now exists: warm-gold star (craft §8: the one deliberate human
+  touch) in the pinned action bar beside "Start exercise"; saved state reads from
+  `getFavouriteExerciseIds()` without prompting sign-in.
+- **`lib/db.ts`** — `getFavourites`, `getFavouriteExerciseIds`, `addFavourite`,
+  `removeFavourite`, `getSafeSpaceNotes`, `saveSafeSpaceNote` (add + edit),
+  `deleteSafeSpaceNote`, `getCustomStrategies`, `saveCustomStrategy` (add + edit),
+  `deleteCustomStrategy`.
+- **`services/verify-schema.ts`** — the three new tables joined the S04 RLS list and the
+  S29 timestamps list.
+
+### Verification
+
+- `npx tsc --noEmit` EXIT 0 · `npx expo export --platform android` bundles (4.3 MB hbc).
+- **`npm run verify` → 50/50 PASS.** `supabase/2026-10-03-portfolio.sql` was applied to the
+  live database (additive + idempotent; nothing existing touched). A second gap surfaced
+  and was fixed: `get_schema_introspection()` in `supabase/introspection.sql` has a
+  **hardcoded table list** for its `rls` section, so the new tables reported `rowsecurity:
+  false` even though RLS was on (all 12 policies present). The three tables are now in that
+  array and the function was re-applied. Watch for this whenever tables are added.
+
+### Decisions taken on the day
+
+- **Streak = exercise sessions only** — confirmed by Aamir (the recommendation in
+  `08-live-data-and-auth-wiring.md` B1). Not combined with check-ins.
+
+### Not done / deliberately deferred
+
+- **M3-05 (educational content for Learn, Reframe, Relationships) — deferred, not started.**
+  Blocked on the workbook: it is the source of truth and S23 forbids agent-generated prompts
+  ("not agent-generated artifacts", 28 Aug §12), and the toolkit PDF cannot be read in this
+  build environment. **Aamir to decide the approach later** — carried in the open-questions
+  register rather than decided here. Nothing was invented for those chapters.
+- **M3-01 (Pattern Dashboard)** still parked with the S26/D03 question — deliberately not
+  built: the weekly window chart is the only approved chart and it is not a mood trend.
+
 ## 2026-10-01 (2) — Follow-up: completion-button text contrast + changeable check-in
 
 Follow-up to [`09-bugfix-report.md`](09-bugfix-report.md).

@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { ensureSignedIn, getCurrentUserId } from "./auth";
+import { nsBucket, type NsStateKey, type SurvivalKey } from "../types/checkin";
 
 // ============================================================
 // TYPES
@@ -292,4 +293,244 @@ export async function getChapters() {
     .order("order_index");
   if (error) throw error;
   return data;
+}
+
+// ============================================================
+// DASHBOARD STATS (M3-03) — descriptive counts only (S26/D03:
+// no mood or wellbeing trend is ever derived or charted; the
+// weekly bars carry the nervous-system *state* from check-ins,
+// which is not a wellbeing metric).
+// ============================================================
+export interface DashboardWeekDay {
+  /** "Mon".."Sun" for the six days before today; "Today" for today. */
+  day: string;
+  /** Window-of-tolerance bucket of the last check-in that day, if any. */
+  state: NsStateKey | null;
+  isToday: boolean;
+  /** Bar height in dp — presence is the message, height carries no metric. */
+  height: number;
+}
+
+export interface DashboardStats {
+  sessions: number;
+  /** Consecutive days (ending today, or yesterday if today has none) with a session. */
+  streak: number;
+  week: DashboardWeekDay[];
+  daysInWindow: number;
+  daysWithState: number;
+  inWindowPct: number;
+  checkedInToday: boolean;
+}
+
+/** Local calendar-day key (YYYY-MM-DD) so "a day" matches the user's day. */
+function localDayKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate(),
+  ).padStart(2, "0")}`;
+}
+
+function addDays(d: Date, n: number): Date {
+  const copy = new Date(d);
+  copy.setDate(copy.getDate() + n);
+  return copy;
+}
+
+export async function getDashboardStats(): Promise<DashboardStats> {
+  const userId = await ensureSignedIn();
+  if (!userId) throw new Error("Sign-in required to view your stats");
+
+  const [{ data: sessions, error: sErr }, { data: checkins, error: cErr }] = await Promise.all([
+    supabase.from("exercise_sessions").select("started_at").order("started_at", { ascending: true }),
+    supabase.from("checkins").select("created_at, ns_state").order("created_at", { ascending: true }),
+  ]);
+  if (sErr) throw sErr;
+  if (cErr) throw cErr;
+
+  const today = new Date();
+  const todayKey = localDayKey(today);
+
+  // --- streak: consecutive days with an exercise session (08 doc B1 default)
+  const sessionDays = new Set(
+    (sessions ?? []).map((r) => localDayKey(new Date(r.started_at as string))),
+  );
+  let streak = 0;
+  let cursor = sessionDays.has(todayKey) ? today : addDays(today, -1);
+  while (sessionDays.has(localDayKey(cursor))) {
+    streak += 1;
+    cursor = addDays(cursor, -1);
+  }
+
+  // --- week: last 7 local days, state = last check-in's ns_state that day
+  const stateByDay = new Map<string, NsStateKey | null>();
+  const hadCheckinToday = new Set<string>();
+  for (const row of checkins ?? []) {
+    const key = localDayKey(new Date(row.created_at as string));
+    hadCheckinToday.add(key);
+    const bucket = nsBucket(row.ns_state as string | null);
+    if (bucket) stateByDay.set(key, bucket);
+  }
+
+  const week: DashboardWeekDay[] = [];
+  let daysInWindow = 0;
+  let daysWithState = 0;
+  for (let i = 6; i >= 0; i -= 1) {
+    const d = addDays(today, -i);
+    const key = localDayKey(d);
+    const isToday = key === todayKey;
+    const state = stateByDay.get(key) ?? null;
+    if (state) {
+      daysWithState += 1;
+      if (state === "window") daysInWindow += 1;
+    }
+    week.push({
+      day: isToday ? "Today" : d.toLocaleDateString("en-GB", { weekday: "short" }),
+      state,
+      isToday,
+      height: state || (isToday && hadCheckinToday.has(key)) ? 32 : 12,
+    });
+  }
+
+  return {
+    sessions: (sessions ?? []).length,
+    streak,
+    week,
+    daysInWindow,
+    daysWithState,
+    inWindowPct: daysWithState > 0 ? Math.round((daysInWindow / daysWithState) * 100) : 0,
+    checkedInToday: hadCheckinToday.has(todayKey),
+  };
+}
+
+// ============================================================
+// PORTFOLIO (M3-04) — favourites · safe-space notes · custom
+// strategies. Owner-only rows (RLS); browse-first sign-in at save.
+// ============================================================
+export interface FavouriteRow {
+  id: string;
+  exercise_id: string;
+  created_at: string;
+  exercises: { id: string; title: string; category: string; duration_minutes: number | null } | null;
+}
+
+export interface NoteRow {
+  id: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StrategyRow {
+  id: string;
+  title: string;
+  body: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getFavourites(): Promise<FavouriteRow[]> {
+  const userId = await ensureSignedIn();
+  if (!userId) throw new Error("Sign-in required to view your portfolio");
+  const { data, error } = await supabase
+    .from("favourites")
+    .select("id, exercise_id, created_at, exercises(id, title, category, duration_minutes)")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  // PostgREST types the to-one join as an array; the query returns one row.
+  return (data ?? []) as unknown as FavouriteRow[];
+}
+
+/** Exercise ids the user has favourited — one read for the star state. */
+export async function getFavouriteExerciseIds(): Promise<Set<string>> {
+  const userId = await getCurrentUserId();
+  if (!userId) return new Set();
+  const { data, error } = await supabase.from("favourites").select("exercise_id");
+  if (error) throw error;
+  return new Set((data ?? []).map((r) => r.exercise_id as string));
+}
+
+export async function addFavourite(exerciseId: string) {
+  const userId = await ensureSignedIn();
+  if (!userId) throw new Error("Sign-in required to save to your portfolio");
+  const { error } = await supabase
+    .from("favourites")
+    .upsert({ user_id: userId, exercise_id: exerciseId }, { onConflict: "user_id,exercise_id" });
+  if (error) throw error;
+}
+
+export async function removeFavourite(exerciseId: string) {
+  const userId = await ensureSignedIn();
+  if (!userId) throw new Error("Sign-in required to update your portfolio");
+  const { error } = await supabase
+    .from("favourites")
+    .delete()
+    .eq("exercise_id", exerciseId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
+export async function getSafeSpaceNotes(): Promise<NoteRow[]> {
+  const userId = await ensureSignedIn();
+  if (!userId) throw new Error("Sign-in required to view your notes");
+  const { data, error } = await supabase
+    .from("safe_space_notes")
+    .select("id, body, created_at, updated_at")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as NoteRow[];
+}
+
+export async function saveSafeSpaceNote(body: string, id?: string) {
+  const userId = await ensureSignedIn();
+  if (!userId) throw new Error("Sign-in required to save a note");
+  const { error } = id
+    ? await supabase
+        .from("safe_space_notes")
+        .update({ body, updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("user_id", userId)
+    : await supabase.from("safe_space_notes").insert({ user_id: userId, body });
+  if (error) throw error;
+}
+
+export async function deleteSafeSpaceNote(id: string) {
+  const userId = await ensureSignedIn();
+  if (!userId) throw new Error("Sign-in required to delete a note");
+  const { error } = await supabase.from("safe_space_notes").delete().eq("id", id).eq("user_id", userId);
+  if (error) throw error;
+}
+
+export async function getCustomStrategies(): Promise<StrategyRow[]> {
+  const userId = await ensureSignedIn();
+  if (!userId) throw new Error("Sign-in required to view your strategies");
+  const { data, error } = await supabase
+    .from("custom_strategies")
+    .select("id, title, body, created_at, updated_at")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as StrategyRow[];
+}
+
+export async function saveCustomStrategy(
+  entry: { title: string; body?: string },
+  id?: string,
+) {
+  const userId = await ensureSignedIn();
+  if (!userId) throw new Error("Sign-in required to save a strategy");
+  const { error } = id
+    ? await supabase
+        .from("custom_strategies")
+        .update({ title: entry.title, body: entry.body ?? null, updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("user_id", userId)
+    : await supabase
+        .from("custom_strategies")
+        .insert({ user_id: userId, title: entry.title, body: entry.body ?? null });
+  if (error) throw error;
+}
+
+export async function deleteCustomStrategy(id: string) {
+  const userId = await ensureSignedIn();
+  if (!userId) throw new Error("Sign-in required to delete a strategy");
+  const { error } = await supabase.from("custom_strategies").delete().eq("id", id).eq("user_id", userId);
+  if (error) throw error;
 }

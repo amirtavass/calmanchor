@@ -20,7 +20,7 @@ begin
       select coalesce(json_agg(json_build_object('tablename', tablename, 'rowsecurity', rowsecurity)), '[]'::json)
       from pg_tables
       where schemaname = 'public'
-        and tablename = any (array['checkins','journal_entries','exercise_sessions','checklist_progress','crisis_plan','settings','profiles','tags','users'])
+        and tablename = any (array['checkins','journal_entries','exercise_sessions','checklist_progress','crisis_plan','settings','profiles','favourites','safe_space_notes','custom_strategies','tags','users'])
     ),
     'views', (
       select coalesce(json_agg(table_name), '[]'::json)

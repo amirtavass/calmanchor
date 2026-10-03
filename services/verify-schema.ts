@@ -242,7 +242,7 @@ async function engineB() {
   const d = data as any;
 
   // S04-ready RLS status for all user-data tables
-  const rlsTables = ["checkins", "journal_entries", "exercise_sessions", "checklist_progress", "crisis_plan", "settings", "profiles", "tags", "users"];
+  const rlsTables = ["checkins", "journal_entries", "exercise_sessions", "checklist_progress", "crisis_plan", "settings", "profiles", "favourites", "safe_space_notes", "custom_strategies", "tags", "users"];
   const rlsMap: Record<string, boolean> = {};
   for (const r of d.rls ?? []) rlsMap[r.tablename] = r.rowsecurity === true;
   for (const t of rlsTables) {
@@ -250,7 +250,7 @@ async function engineB() {
   }
 
   // S29 — created_at + updated_at on all user-data tables
-  const need = ["journal_entries", "exercise_sessions", "checkins", "tags", "profiles"];
+  const need = ["journal_entries", "exercise_sessions", "checkins", "tags", "profiles", "favourites", "safe_space_notes", "custom_strategies"];
   const tsMap: Record<string, Record<string, boolean>> = {};
   for (const r of d.ts_columns ?? []) (tsMap[r.table_name] ??= {})[r.column_name] = true;
   for (const t of need) {

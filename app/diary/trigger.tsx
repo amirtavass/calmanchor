@@ -10,6 +10,7 @@ import { useSignInGate } from "../../components/SignInPrompt";
 import { saveCheckin } from "../../lib/db";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { colors } from "../../theme/tokens";
+import { NS_OPTIONS, SR_OPTIONS, type StateOption } from "../../types/checkin";
 
 type MciGlyph = ComponentProps<typeof MaterialCommunityIcons>["name"];
 type TokenKey = keyof typeof colors.light;
@@ -20,20 +21,10 @@ type TokenKey = keyof typeof colors.light;
  * saveCheckin at the moment of saving. A single check-in row holds the
  * trigger name(s) + ns_state + survival_response + note (schema: checkins).
  * Craft §1/§12: quiet header, KAV, pinned Save.
+ *
+ * State vocabulary comes from `types/checkin` — shared with the Home check-in
+ * card (M3-02) so the two surfaces always mean the same thing.
  */
-
-const NS_OPTIONS = [
-  { key: "window", label: "In window", icon: "leaf" as MciGlyph, fg: "nsWindow", bg: "nsWindowBg" },
-  { key: "hyper", label: "Hyper", icon: "flash" as MciGlyph, fg: "nsHyper", bg: "nsHyperBg" },
-  { key: "hypo", label: "Hypo", icon: "snowflake" as MciGlyph, fg: "nsHypo", bg: "nsHypoBg" },
-] as const;
-
-const SR_OPTIONS = [
-  { key: "fight", label: "Fight", icon: "flash" as MciGlyph, fg: "srFight", bg: "srFightBg" },
-  { key: "flight", label: "Flight", icon: "run" as MciGlyph, fg: "srFlight", bg: "srFlightBg" },
-  { key: "freeze", label: "Freeze", icon: "snowflake" as MciGlyph, fg: "srFreeze", bg: "srFreezeBg" },
-  { key: "fawn", label: "Fawn", icon: "handshake" as MciGlyph, fg: "srFawn", bg: "srFawnBg" },
-] as const;
 
 export default function TriggerScreen() {
   const router = useRouter();
@@ -77,8 +68,8 @@ export default function TriggerScreen() {
     value,
     onSelect,
   }: {
-    options: readonly { key: K; label: string; icon: MciGlyph; fg: TokenKey; bg: TokenKey }[];
-    value: K | null;
+    options: readonly StateOption<K>[];
+    value: string | null;
     onSelect: (k: K | null) => void;
   }) => (
     <View style={styles.pickerRow}>

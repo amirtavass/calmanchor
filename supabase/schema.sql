@@ -64,6 +64,9 @@ create table users (
 -- ============================================================
 
 drop table if exists settings cascade;
+drop table if exists custom_strategies cascade;
+drop table if exists safe_space_notes cascade;
+drop table if exists favourites cascade;
 drop table if exists exercise_session_tags cascade;
 drop table if exists journal_entry_tags cascade;
 drop table if exists exercise_sessions cascade;
@@ -159,6 +162,35 @@ create table profiles (
   updated_at timestamptz default now()
 );
 
+-- favourites (M3-04 Portfolio — favourited exercises)
+create table favourites (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references users(id) on delete cascade default auth.uid() not null,
+  exercise_id uuid references exercises(id) on delete cascade not null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique(user_id, exercise_id)
+);
+
+-- safe_space_notes (M3-04 Portfolio — "Making Safety Real" notes)
+create table safe_space_notes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references users(id) on delete cascade default auth.uid() not null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  body text not null
+);
+
+-- custom_strategies (M3-04 Portfolio — user's own strategies)
+create table custom_strategies (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references users(id) on delete cascade default auth.uid() not null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  title text not null,
+  body text
+);
+
 -- tags (user_id null = system tag)
 create table tags (
   id uuid primary key default gen_random_uuid(),
@@ -203,6 +235,9 @@ create index idx_crisis_plan_user_id       on crisis_plan(user_id);
 create index idx_settings_user_id          on settings(user_id);
 create index idx_tags_user_id              on tags(user_id);
 create index idx_profiles_user_id          on profiles(user_id);
+create index idx_favourites_user_id        on favourites(user_id);
+create index idx_safe_space_notes_user_id  on safe_space_notes(user_id);
+create index idx_custom_strategies_user_id on custom_strategies(user_id);
 
 -- S16 hygiene: system tag names must be unique (user tags can repeat names)
 create unique index tags_system_name_key on tags(name) where user_id is null;

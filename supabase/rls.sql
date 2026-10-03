@@ -110,6 +110,39 @@ create policy "profiles update" on profiles for update using (auth.uid() = user_
 drop policy if exists "profiles delete" on profiles;
 create policy "profiles delete" on profiles for delete using (auth.uid() = user_id);
 
+-- favourites (M3-04 Portfolio)
+alter table favourites enable row level security;
+drop policy if exists "favourites select" on favourites;
+create policy "favourites select" on favourites for select using (auth.uid() = user_id);
+drop policy if exists "favourites insert" on favourites;
+create policy "favourites insert" on favourites for insert with check (auth.uid() = user_id);
+drop policy if exists "favourites update" on favourites;
+create policy "favourites update" on favourites for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "favourites delete" on favourites;
+create policy "favourites delete" on favourites for delete using (auth.uid() = user_id);
+
+-- safe_space_notes (M3-04 Portfolio)
+alter table safe_space_notes enable row level security;
+drop policy if exists "safe_space_notes select" on safe_space_notes;
+create policy "safe_space_notes select" on safe_space_notes for select using (auth.uid() = user_id);
+drop policy if exists "safe_space_notes insert" on safe_space_notes;
+create policy "safe_space_notes insert" on safe_space_notes for insert with check (auth.uid() = user_id);
+drop policy if exists "safe_space_notes update" on safe_space_notes;
+create policy "safe_space_notes update" on safe_space_notes for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "safe_space_notes delete" on safe_space_notes;
+create policy "safe_space_notes delete" on safe_space_notes for delete using (auth.uid() = user_id);
+
+-- custom_strategies (M3-04 Portfolio)
+alter table custom_strategies enable row level security;
+drop policy if exists "custom_strategies select" on custom_strategies;
+create policy "custom_strategies select" on custom_strategies for select using (auth.uid() = user_id);
+drop policy if exists "custom_strategies insert" on custom_strategies;
+create policy "custom_strategies insert" on custom_strategies for insert with check (auth.uid() = user_id);
+drop policy if exists "custom_strategies update" on custom_strategies;
+create policy "custom_strategies update" on custom_strategies for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "custom_strategies delete" on custom_strategies;
+create policy "custom_strategies delete" on custom_strategies for delete using (auth.uid() = user_id);
+
 -- ---- TAGS: system tags readable by all; user tags owner-only ----
 alter table tags enable row level security;
 drop policy if exists "tags select" on tags;
