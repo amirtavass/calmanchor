@@ -26,6 +26,7 @@ copy the format and headings; do not edit the template itself (it is project-lea
 | ADR-009 | Journey-first screen mapping is M2 scope | accepted | 2026-09-05 | Amirreza |
 | ADR-010 | Engine B introspects via RPC, not a direct DB password | accepted | 2026-09-11 | Amirreza |
 | ADR-011 | Portfolio data model: three owner-only tables | proposed | 2026-10-03 | Amirreza |
+| ADR-012 | Offline behaviour: local cache + write-behind outbox | accepted | 2026-10-03 | Amirreza |
 
 > Remaining known candidate ADRs (shape from `schema-coaching/templates/ADR.md`, not yet written):
 > - **ADR-004** Journal entry deletion — soft vs hard delete (source: S22; D13 resolves to row-level hard

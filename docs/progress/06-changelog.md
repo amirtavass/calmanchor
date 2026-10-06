@@ -2,6 +2,116 @@
 
 Append-only record of changes (decisions + progress). Newest first. Never edit or delete a past entry.
 
+## 2026-10-03 (2) — Phase C + D: onboarding, CSV export, typed schema, offline cache + outbox
+
+Delivers **M3-08**, **M3-09/M4-07**, **M3-07** and **B4**, plus a code-level pass at
+**M2-06/M4-01**. Two decisions taken on the day, both recorded.
+
+### M3-08 — onboarding (Phase C)
+
+- **`app/onboarding.tsx`** (new) — the seven steps from technical-spec §3.8, verbatim in intent:
+  Welcome → How It Works → The Nervous System → Your First Exercise → Your Portfolio → Crisis
+  Support → You're Ready. Every step skippable, exit always available (icon-only close + "Skip"),
+  **no progress bar** (spec: "avoids you're X% done pressure"), soft fade between steps, 1–2
+  sentences each, no login and no data collection.
+- Step 3 is a tap-to-explore three-zone band (hypo / window / hyper) + the four survival-response
+  chips; nothing is recorded and it is not a quiz. **Deviation recorded:** the spec asks for a
+  slider; a tappable band keeps it strictly informational rather than evaluative.
+- Step 4 offers Box Breathing and 5-4-3-2-1 (as the spec names them), resolved against the live
+  catalogue by title so a rename can't 404 the link; falls back to the Exercises tab.
+- **`lib/onboarding.ts`** (new) — the "seen it" flag lives in **AsyncStorage**, not a user-data row:
+  the spec is explicit that onboarding collects nothing and must work anonymously, so the flag
+  cannot sit behind RLS. A tiny external store (`useSyncExternalStore`) so the first-launch redirect
+  in `app/_layout.tsx` cannot go stale when onboarding finishes and routes back.
+- **`lib/crisisContacts.ts`** (new) — `UK_CRISIS_CONTACTS` extracted from the crisis screen's inline
+  string so the numbers exist in one place; `app/crisis/index.tsx` now renders them as rows
+  (name / note / value) instead of a single text line.
+- Revisit from Profile: "Read the introduction again" → `/onboarding`; `finish()` returns to where
+  you came from when there is a back stack.
+
+### M3-09 / M4-07 — user CSV export (Phase C)
+
+- **`app/profile/export.tsx`** (new) + **`lib/export.ts`** (new). Three opt-in datasets with live
+  row counts and checkboxes (spec §3.9: "simple checkboxes", "no complex export settings"); CSV
+  generated on-device and written to **Downloads** on Android / app Documents on iOS, then handed to
+  the platform's viewer or share sheet. No network call, no cloud, no copy kept by the app.
+- **Column deviation, recorded:** the spec's sample columns assume a wider schema than
+  `supabase/schema.sql` (e.g. trigger logs have no "Where / Environment / Intensity"). Exported
+  columns map to what actually exists — diary `created_at, prompt, body, tags`;
+  triggers `created_at, trigger, nervous_system_state, survival_response, note`;
+  portfolio `kind, name, category, detail, created_at`. The screen says so plainly.
+- **Format deviation, recorded:** spec says "CSV or Excel"; we ship CSV (which Excel/Numbers/Sheets
+  open) rather than add an xlsx writer dependency for no extra data.
+- Entry points live on Profile ("Export my data" → `/profile/export`), since the app has no separate
+  Settings screen. Sign-in gated at export (S01). This is the **user's own copy** — distinct from
+  the research export (S27, CLI-only, free text excluded).
+
+### B4 — generated Supabase types (Phase D)
+
+- **`services/gen-types.ts`** + `npm run gen:types` → **`supabase/database.types.ts`**, generated
+  from `information_schema` over `SUPABASE_DB_URL` (deliberately independent of the Supabase CLI,
+  matching ADR-010). `lib/supabase.ts` is now `createClient<Database>(...)`, so every query is
+  checked against the real columns.
+- **Two real schema defects surfaced and fixed** rather than papered over:
+  1. `created_at` / `updated_at` (and `exercise_sessions.started_at`) were declared **nullable** —
+     `default now()` without `not null`. The app has always assumed they exist (S29, and the S21
+     edit window is computed from `created_at`). `supabase/2026-10-03-timestamps-not-null.sql`
+     backfills and tightens them; `schema.sql` updated to match. `ended_at` stays nullable on
+     purpose (an abandoned session has no end).
+  2. `steps` is `jsonb`, typed `Json` — narrowed to `string[]` at the `lib/db.ts` seam.
+- **Orphan tables dropped:** `sessions` and `journal_prompts` (the pre-rename names from M1-09) were
+  still in the live database. Inspected first — `sessions` 0 rows, `journal_prompts` 3 rows, and
+  the 3 were verified **identical** to `prompts` before dropping. Approved by Aamir.
+- Generator fixes along the way: ANSI type names ("timestamp with time zone") now resolve via
+  `udt_name` fallback, and `Row` fields are always present (`| null`, never `?`).
+
+### M3-07 — local cache + write-behind outbox (Phase D)
+
+- **Decision (ADR-012):** build the *write-behind cache* reading of M3-07, not literal
+  "Supabase opt-in backup". Supabase stays the source of truth; S02 auth and S04 RLS are untouched.
+  Raised and agreed with Aamir on the day.
+- **`lib/offline/`** (new): `schema.ts` (generic `cache` + `outbox`), `client.ts` (lazy open,
+  **returns `null` if SQLite cannot start** so the app degrades to online-only rather than
+  breaking), `store.ts`, `outbox.ts`, `index.ts` (`readThrough`).
+- **`lib/id.ts`** — the client generates every new row's primary key, so a replayed insert is an
+  upsert and an offline write can never duplicate a diary entry.
+- **`lib/db.ts`** keeps its whole public API; internals now read through the cache and write through
+  the outbox. `getDashboardStats()` computes from cache, so the numbers work offline.
+- `syncNow()` drains the queue on launch and whenever `AppState` becomes `active`
+  (`app/_layout.tsx`). Queued rows survive failure (marked `failed` only after 25 attempts, payload
+  kept). `anonymiseMyData()` drops the outbox and the cache first — a queued write must never
+  resurrect deleted data.
+- Deps: `expo-sqlite` (config plugin added) + `drizzle-orm`. **Requires a dev-client rebuild** —
+  already needed for the M2-01b blob-util patch.
+
+### M2-06 / M4-01 — code-level QA pass (Phase D)
+
+- **`components/CrisisFab.tsx`** — was a hardcoded light-mode red (`#BF3A2A`) on a dark-mode
+  surface. Now `c.error` / `c.textInverse`, so the FAB is legible in both themes. Accessibility
+  label added.
+- **`app/(tabs)/index.tsx`** — the Home ScrollView had no keyboard handling, so the check-in card's
+  note field could sit behind the keyboard. Wrapped in `KeyboardAvoidingView` with
+  `automaticallyAdjustKeyboardInsets`, matching `diary/new`.
+- Audit otherwise clean: no hardcoded hex outside the token sets and RN `shadowColor`; safe-area
+  insets on every screen; `onRequestClose` on modals; no US spellings or pressure language in new
+  copy (Appendix F).
+
+### Verification
+
+- `npx tsc --noEmit` EXIT 0 · `npx expo export --platform android` bundles (4.8 MB hbc, +drizzle).
+- `npm run verify` → **50/50 PASS** after the timestamp tightening and the orphan-table drop.
+
+### Still to do (device work)
+
+- **M2-06 / M4-02 device QA** and **M4-01 visual QA** need a real Android/iOS device — this session
+  could only do the code-level pass. Both remain open for sign-off.
+- Offline behaviour needs a device with aeroplane mode to confirm the queue drains.
+
+### Not done / deliberately deferred
+
+- **M3-05** — still deferred; see the open-questions register. Nothing invented.
+- **M3-01 / M3-06** — still parked with their S26/D03 and "not in the contract" questions.
+
 ## 2026-10-03 — Phase A + B: live dashboard data, Home check-in card, Portfolio tab
 
 Phases A and B of the phased plan agreed this week (dashboard first, then workbook +

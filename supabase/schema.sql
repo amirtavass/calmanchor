@@ -56,7 +56,7 @@ create table users (
   email text,
   display_name text,
   google_identity text unique,      -- OAuth sub (S02); no password/password_hash
-  created_at timestamptz default now()
+  created_at timestamptz not null default now()
 );
 
 -- ============================================================
@@ -82,8 +82,8 @@ drop table if exists profiles cascade;
 create table checkins (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references users(id) on delete cascade default auth.uid() not null,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
   ns_state text,
   survival_response text,
   triggers text[],
@@ -94,8 +94,8 @@ create table checkins (
 create table journal_entries (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references users(id) on delete cascade default auth.uid() not null,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
   prompt_id uuid references prompts(id) on delete set null,
   body text not null
 );
@@ -105,9 +105,9 @@ create table exercise_sessions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references users(id) on delete cascade default auth.uid() not null,
   exercise_id uuid references exercises(id) on delete set null,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now(),
-  started_at timestamptz default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  started_at timestamptz not null default now(),
   ended_at timestamptz,
   duration_minutes int,
   distress_before smallint,
@@ -124,8 +124,8 @@ create table checklist_progress (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references users(id) on delete cascade default auth.uid() not null,
   checklist_item_id uuid references checklist_items(id) on delete cascade not null,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
   completed boolean default false,
   completed_at timestamptz,
   unique(user_id, checklist_item_id)
@@ -135,8 +135,8 @@ create table checklist_progress (
 create table crisis_plan (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references users(id) on delete cascade default auth.uid() not null,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
   plan_data jsonb not null default '{}'::jsonb
 );
 
@@ -144,8 +144,8 @@ create table crisis_plan (
 create table settings (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references users(id) on delete cascade default auth.uid() not null unique,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
   settings_data jsonb not null default '{}'::jsonb
 );
 
@@ -158,8 +158,8 @@ create table profiles (
   ethnicity text,
   treatment_status text,
   referral_source text,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 -- favourites (M3-04 Portfolio — favourited exercises)
@@ -167,8 +167,8 @@ create table favourites (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references users(id) on delete cascade default auth.uid() not null,
   exercise_id uuid references exercises(id) on delete cascade not null,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
   unique(user_id, exercise_id)
 );
 
@@ -176,8 +176,8 @@ create table favourites (
 create table safe_space_notes (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references users(id) on delete cascade default auth.uid() not null,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
   body text not null
 );
 
@@ -185,8 +185,8 @@ create table safe_space_notes (
 create table custom_strategies (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references users(id) on delete cascade default auth.uid() not null,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
   title text not null,
   body text
 );
@@ -196,15 +196,15 @@ create table tags (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   user_id uuid references users(id) on delete cascade,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 -- exercise_session_tags
 create table exercise_session_tags (
   session_id uuid not null references exercise_sessions(id) on delete cascade,
   tag_id uuid not null references tags(id) on delete cascade,
-  created_at timestamptz default now(),
+  created_at timestamptz not null default now(),
   primary key (session_id, tag_id)
 );
 
@@ -212,7 +212,7 @@ create table exercise_session_tags (
 create table journal_entry_tags (
   entry_id uuid not null references journal_entries(id) on delete cascade,
   tag_id uuid not null references tags(id) on delete cascade,
-  created_at timestamptz default now(),
+  created_at timestamptz not null default now(),
   primary key (entry_id, tag_id)
 );
 
@@ -222,7 +222,7 @@ create table documents (
   title text not null,
   storage_path text not null,
   bucket text not null,
-  created_at timestamptz default now()
+  created_at timestamptz not null default now()
 );
 
 -- indexes

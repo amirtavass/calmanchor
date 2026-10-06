@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import M3Button from "../../components/M3Button";
 import M3Card from "../../components/M3Card";
+import { useSignInGate } from "../../components/SignInPrompt";
 import { useSession, signOut, signInWithGoogle } from "../../lib/auth";
 import { getCurrentUser, getResearchProfile } from "../../lib/db";
 import { useAppTheme } from "../../theme/ThemeContext";
@@ -25,6 +26,9 @@ export default function ProfileIndexScreen() {
   const c = colors[mode];
 
   const { signedIn, user, loading: sessionLoading } = useSession();
+  const { gate, prompt } = useSignInGate({
+    message: "Sign in with Google to export your data — it is only read back for your own account.",
+  });
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [researchDone, setResearchDone] = useState<boolean | null>(null);
@@ -183,7 +187,49 @@ export default function ProfileIndexScreen() {
             />
           </View>
         )}
+        {/* The app — export (M3-09) and the introduction again (M3-08).
+            Export is user-initiated and reads only your own rows (S01 gate). */}
+        <Text style={[styles.sectionLabel, { color: c.textMuted }]}>THE APP</Text>
+        <View style={[styles.appCard, { backgroundColor: c.surface }]}>
+          <Pressable
+            onPress={() =>
+              signedIn ? router.push("/profile/export") : gate(() => router.push("/profile/export"))
+            }
+            style={styles.appRow}
+            accessibilityRole="button"
+            accessibilityLabel="Export my data"
+          >
+            <View style={[styles.appRowIcon, { backgroundColor: c.exGroundBg }]}>
+              <MaterialCommunityIcons name="download-outline" size={18} color={c.exGround} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.appRowTitle, { color: c.text }]}>Export my data</Text>
+              <Text style={[styles.appRowBody, { color: c.textMuted }]}>
+                Save your diary, trigger logs and portfolio to this device as a file.
+              </Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={22} color={c.textMuted} />
+          </Pressable>
+          <Pressable
+            onPress={() => router.push("/onboarding")}
+            style={[styles.appRow, styles.appRowBorder]}
+            accessibilityRole="button"
+            accessibilityLabel="Read the introduction again"
+          >
+            <View style={[styles.appRowIcon, { backgroundColor: c.exJournalBg }]}>
+              <MaterialCommunityIcons name="book-open-page-variant-outline" size={18} color={c.exJournal} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.appRowTitle, { color: c.text }]}>Read the introduction again</Text>
+              <Text style={[styles.appRowBody, { color: c.textMuted }]}>
+                The seven short steps from first launch. No login needed.
+              </Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={22} color={c.textMuted} />
+          </Pressable>
+        </View>
       </ScrollView>
+      {prompt}
     </View>
   );
 }
@@ -257,4 +303,24 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     textAlign: "center",
   },
+  sectionLabel: {
+    marginTop: 26,
+    marginBottom: 10,
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+  },
+  appCard: { borderRadius: 16, paddingHorizontal: 16 },
+  appRow: { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 14 },
+  appRowBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "rgba(0,0,0,0.08)" },
+  appRowIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  appRowTitle: { fontSize: 15, lineHeight: 21, fontWeight: "600" },
+  appRowBody: { marginTop: 2, fontSize: 12.5, lineHeight: 18 },
 });

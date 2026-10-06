@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { View, StyleSheet, ScrollView, Pressable } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, KeyboardAvoidingView, Platform } from "react-native";
 import { Text } from "react-native-paper";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useRouter } from "expo-router";
@@ -153,8 +153,19 @@ export default function HomeScreen() {
       {/* Zone 1 · ScreenHeader — signed-in profile action + ThemeToggle. */}
       <ScreenHeader title="Calm Anchor" />
 
-      {/* Zone 2 · content */}
-      <ScrollView ref={scrollRef} contentContainerStyle={styles.body}>
+      {/* Zone 2 · content. KAV + `automaticallyAdjustKeyboardInsets` so the
+          check-in card's note field is never hidden behind the keyboard
+          (M2-06 keyboard handling — same treatment as diary/new). */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={styles.body}
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
+        >
         {/* Greeting card — anchored at the top of the day. Featured warm tone,
             gives the user the date + greeting + a single supportive sentence +
             a route into the profile (replacing the top-right avatar). */}
@@ -489,7 +500,8 @@ export default function HomeScreen() {
           </View>
           <MaterialCommunityIcons name="chevron-right" size={20} color={c.exSelfkind} />
         </Pressable>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { colors } from "../../theme/tokens";
+import { UK_CRISIS_CONTACTS } from "../../lib/crisisContacts";
 
 /**
  * Crisis landing (modal, always one tap away). S11: crisis exercises are a
@@ -111,9 +112,17 @@ export default function CrisisIndexScreen() {
         {/* UK contacts — visible, not intrusive */}
         <View style={[styles.contactCard, { backgroundColor: c.surface }]}>
           <Text style={[styles.contactLabel, { color: c.textMuted }]}>UK crisis contacts</Text>
-          <Text style={[styles.contactLine, { color: c.text }]}>
-            Samaritans 116 123 · Shout 85258 · NHS 111
-          </Text>
+          {UK_CRISIS_CONTACTS.map((contact, i) => (
+            <View key={contact.name} style={[styles.contactRow, i > 0 ? styles.contactBorder : null]}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.contactName, { color: c.text }]}>{contact.name}</Text>
+                {contact.note ? (
+                  <Text style={[styles.contactNote, { color: c.textMuted }]}>{contact.note}</Text>
+                ) : null}
+              </View>
+              <Text style={[styles.contactValue, { color: c.exCrisis }]}>{contact.value}</Text>
+            </View>
+          ))}
         </View>
       </ScrollView>
     </View>
@@ -164,4 +173,9 @@ const styles = StyleSheet.create({
   contactCard: { borderRadius: 12, padding: 14, marginTop: 24 },
   contactLabel: { fontSize: 12, fontWeight: "800", letterSpacing: 0.6, textTransform: "uppercase" },
   contactLine: { marginTop: 6, fontSize: 14, lineHeight: 20 },
+  contactRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 },
+  contactBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "rgba(0,0,0,0.08)" },
+  contactName: { fontSize: 14.5, lineHeight: 20, fontWeight: "600" },
+  contactNote: { marginTop: 1, fontSize: 12, lineHeight: 16 },
+  contactValue: { fontSize: 14.5, lineHeight: 20, fontWeight: "700" },
 });
