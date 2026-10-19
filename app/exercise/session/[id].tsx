@@ -31,6 +31,51 @@ import { useAppTheme } from "../../../theme/ThemeContext";
 import { colors } from "../../../theme/tokens";
 
 /**
+ * Completion CTA — deliberately bespoke. The filled `M3Button` rendered this
+ * button transparent on device through three rounds of colour fixes (fill
+ * visible, icon + label not), so this control owns its styling outright:
+ * hard-coded palette, no theme helper, no shared component path that anything
+ * else can override. Same 40dp height as M3Button so the pinned bar stays level.
+ */
+function CompletionButton({
+  label,
+  onPress,
+  disabled,
+  style,
+}: {
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  style?: object;
+}) {
+  const { mode } = useAppTheme();
+  // The success pair from theme/tokens, hard-coded so no styling pipeline can
+  // interfere: deep green + white (light) / light green + near-black (dark).
+  const bg = mode === "light" ? "#2E7D52" : "#68C48A";
+  const fg = mode === "light" ? "#FFFFFF" : "#12241A";
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
+      accessibilityLabel={label}
+      style={({ pressed }) => [
+        styles.completionBtn,
+        { backgroundColor: bg, opacity: disabled ? 0.5 : pressed ? 0.88 : 1 },
+        style,
+      ]}
+    >
+      <Text style={{ color: fg, fontSize: 14, lineHeight: 20, fontWeight: "700" }}>
+        {label}
+      </Text>
+      <MaterialCommunityIcons name="arrow-right" size={20} color={fg} />
+    </Pressable>
+  );
+}
+
+/**
  * Guided session (03-session-flow.md + 05-session D2 "Colour-forward").
  * Flow: distress-before → step 1..n → distress-after + helpfulness → confirm →
  * result (optional state re-check-in). Order, copy and data contract are locked
@@ -701,12 +746,8 @@ export default function SessionScreen() {
               onPress={() => setStage("confirm")}
               style={{ flex: 1 }}
             />
-            <M3Button
+            <CompletionButton
               label="Review & save"
-              icon="arrow-right"
-              iconRight
-              variant="filled"
-              color={c.success}
               onPress={() => setStage("confirm")}
               style={{ flex: 1.3 }}
             />
@@ -859,11 +900,8 @@ export default function SessionScreen() {
               onPress={() => setStage("post")}
               style={{ flex: 1 }}
             />
-            <M3Button
+            <CompletionButton
               label="Save"
-              icon="check"
-              iconRight
-              color={c.success}
               onPress={() => gateSave(() => void handleSave())}
               disabled={saving}
               style={{ flex: 1.3 }}
@@ -903,23 +941,26 @@ export default function SessionScreen() {
                     style={
                       selectedState === s.key
                         ? { borderWidth: 2, borderColor: c[s.fg] }
-                        : undefined
+                        : { borderWidth: 1, borderColor: c.divider }
                     }
                   >
-                    <MaterialCommunityIcons
-                      name={s.icon}
-                      size={24}
-                      color={c[s.fg]}
-                    />
-                    <Text
-                      style={{
-                        color: c[s.fg],
-                        fontWeight: "700",
-                        marginTop: 6,
-                      }}
-                    >
-                      {s.label}
-                    </Text>
+                    <View style={{ alignItems: "center" }}>
+                      <MaterialCommunityIcons
+                        name={s.icon}
+                        size={24}
+                        color={c[s.fg]}
+                      />
+                      <Text
+                        style={{
+                          color: c[s.fg],
+                          fontWeight: "700",
+                          marginTop: 6,
+                          textAlign: "center",
+                        }}
+                      >
+                        {s.label}
+                      </Text>
+                    </View>
                   </M3Card>
                 </View>
               ))}
@@ -946,11 +987,8 @@ export default function SessionScreen() {
               onPress={() => router.replace("/(tabs)/exercises")}
               style={{ flex: 1 }}
             />
-            <M3Button
+            <CompletionButton
               label="Done"
-              icon="check"
-              iconRight
-              color={c.success}
               onPress={() => router.replace("/(tabs)/exercises")}
               style={{ flex: 1.3 }}
             />
@@ -1001,6 +1039,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 14,
     borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  completionBtn: {
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 20,
   },
 
   // --- Shared content -------------------------------------------------------

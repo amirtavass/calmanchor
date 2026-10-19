@@ -162,18 +162,17 @@ export default function ProfileIndexScreen() {
         ) : (
           /* Signed out — browse-first sign-in card */
           <View style={styles.signedOut}>
-            <View style={[styles.signedOutMedallion, { backgroundColor: c.secondaryTint }]}>
-              <MaterialCommunityIcons name="google" size={32} color={c.secondary} />
+            <View style={[styles.signedOutMedallion, { backgroundColor: "#FFFFFF", borderColor: "#DADCE0" }]}>
+              <MaterialCommunityIcons name="google" size={32} color="#4285F4" />
             </View>
-            <Text style={[styles.signedOutTitle, { color: c.text }]}>Sign in with Google</Text>
+            <Text style={[styles.signedOutTitle, { color: c.text }]}>Sign in</Text>
             <Text style={[styles.signedOutBody, { color: c.textMuted }]}>
               Your exercises, journal and check-ins stay private to your account. You can browse
               everything without an account.
             </Text>
             <M3Button
-              label={busy ? "Signing in…" : "Sign in with Google"}
+              label={busy ? "Signing in…" : "Sign in"}
               icon="google"
-              iconRight
               color={c.secondaryActive}
               onPress={async () => {
                 setBusy(true);
@@ -295,6 +294,7 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
   },
   signedOutTitle: { fontSize: 20, fontWeight: "800", marginTop: 16, textAlign: "center" },
   signedOutBody: {

@@ -120,7 +120,6 @@ export default function OnboardingScreen() {
     <View style={[styles.root, { backgroundColor: c.bg, paddingTop: insets.top }]}>
       {/* Zone 1 — quiet: exit (always) + Skip (never a wall) */}
       <View style={styles.topBar}>
-        <View style={styles.topSide} />
         <View style={[styles.medallion, { backgroundColor: c[tone.bg] }]}>
           <MaterialCommunityIcons
             name={
@@ -142,17 +141,16 @@ export default function OnboardingScreen() {
             color={c[tone.fg]}
           />
         </View>
-        <View style={[styles.topSide, styles.topRight]}>
-          <Pressable
-            onPress={finish}
-            hitSlop={12}
-            accessibilityRole="button"
-            accessibilityLabel="Close onboarding"
-            style={[styles.closeBtn, { backgroundColor: c.surfaceOffset }]}
-          >
-            <MaterialCommunityIcons name="close" size={18} color={c.textMuted} />
-          </Pressable>
-        </View>
+        <View style={styles.topSpacer} />
+        <Pressable
+          onPress={finish}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="Close onboarding"
+          style={[styles.closeBtn, { backgroundColor: c.surfaceOffset }]}
+        >
+          <MaterialCommunityIcons name="close" size={18} color={c.textMuted} />
+        </Pressable>
       </View>
 
       {/* Zone 2 — content, one thought at a time */}
@@ -376,9 +374,14 @@ export default function OnboardingScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  topBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 8 },
-  topSide: { width: 64, alignItems: "flex-start", justifyContent: "center" },
-  topRight: { alignItems: "flex-end" },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  topSpacer: { flex: 1 },
   medallion: {
     width: 52,
     height: 52,

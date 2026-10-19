@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ComponentProps } from "react";
-import { StyleSheet, View } from "react-native";
-import { Text, TouchableRipple } from "react-native-paper";
+import { Pressable, StyleSheet, View } from "react-native";
+import { Text } from "react-native-paper";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useAppTheme } from "../theme/ThemeContext";
 import { colors } from "../theme/tokens";
@@ -11,11 +11,13 @@ import { colors } from "../theme/tokens";
  *
  * Spec (filled): container height 40dp · fully rounded (radius 20dp) · label label-large
  * (14/20/500) · padding 16dp · optional leading icon 20dp · elevation 0.
- * Pressed state layer = 12% of the content colour. Paper is used only for the press
- * ripple (TouchableRipple) + accessibility.
+ * Pressed state layer = 12% of the content colour. A plain RN `Pressable` is used
+ * rather than Paper's `TouchableRipple`: on device, the Android foreground ripple
+ * inside the clipped wrapper was rendering the icon + label invisible (fill only).
+ * The custom pressed overlay below provides the identical M3 state layer.
  *
  * Variants:
- *   filled   — container `primary`, label `onPrimary`
+ *   filled   — container `primary`, label chosen by `readableOn`
  *   outlined — transparent container, `primary` label + 1dp `primary` stroke;
  *              `selected` flips it to filled; `color` overrides the accent
  *   text     — transparent, `primary` label (used for "Skip" / text actions)
@@ -97,7 +99,7 @@ export default function M3Button({
   }
 
   return (
-    <TouchableRipple
+    <Pressable
       onPress={onPress}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
@@ -116,7 +118,9 @@ export default function M3Button({
         {icon && !iconRight ? (
           <MaterialCommunityIcons name={icon} size={20} color={contentColor} />
         ) : null}
-        <Text style={[styles.label, { color: contentColor }]}>{label}</Text>
+        <Text numberOfLines={1} style={[styles.label, styles.labelText, { color: contentColor }]}>
+          {label}
+        </Text>
         {icon && iconRight ? (
           <MaterialCommunityIcons name={icon} size={20} color={contentColor} />
         ) : null}
@@ -127,7 +131,7 @@ export default function M3Button({
           />
         ) : null}
       </View>
-    </TouchableRipple>
+    </Pressable>
   );
 }
 
@@ -151,4 +155,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     letterSpacing: 0.1,
   },
+  // Long labels ellipsize instead of wrapping — a wrapped label would exceed
+  // the fixed 40dp clip and render as an unreadable sliver.
+  labelText: { flexShrink: 1 },
 });

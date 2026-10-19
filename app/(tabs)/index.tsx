@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { View, StyleSheet, ScrollView, Pressable, KeyboardAvoidingView, Platform } from "react-native";
 import { Text } from "react-native-paper";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import ScreenHeader from "../../components/ScreenHeader";
 import M3Button from "../../components/M3Button";
 import M3Card from "../../components/M3Card";
@@ -14,11 +14,13 @@ import { useSignInGate } from "../../components/SignInPrompt";
 import {
   getSessions,
   getJournalEntries,
+  getCheckins,
   getCurrentUser,
   getResearchProfile,
   getDashboardStats,
   type DashboardStats,
 } from "../../lib/db";
+import { nsOption } from "../../types/checkin";
 import { useSession } from "../../lib/auth";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { colors } from "../../theme/tokens";
@@ -48,58 +50,65 @@ export default function HomeScreen() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentSession, setRecentSession] = useState<SessionRow | null>(null);
   const [recentEntry, setRecentEntry] = useState<EntryRow | null>(null);
+  const [recentCheckin, setRecentCheckin] = useState<CheckinRow | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const checkinY = useRef(0);
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!signedIn) {
       setDisplayName(null);
       setNeedsResearchProfile(false);
       setStats(null);
       setRecentSession(null);
       setRecentEntry(null);
+      setRecentCheckin(null);
       return;
     }
-    (async () => {
-      try {
-        const u = await getCurrentUser();
-        setDisplayName(u?.display_name ?? null);
-      } catch {
-        // Identity read is non-critical — greeting falls back to "there".
-      }
-      try {
-        const p = await getResearchProfile();
-        setNeedsResearchProfile(p === null);
-      } catch {
-        // Non-critical — don't nag if we can't confirm.
-      }
-      try {
-        setStats(await getDashboardStats());
-      } catch {
-        // Not signed in (or offline) — the stat cards show dashes, never numbers.
-      }
-      try {
-        const s = await getSessions();
-        if (s && s.length) setRecentSession(s[0]);
-      } catch {
-        // Recent activity stays hidden.
-      }
-      try {
-        const j = await getJournalEntries();
-        if (j && j.length) setRecentEntry(j[0]);
-      } catch {
-        // Not signed in — recent journal stays hidden.
-      }
-    })();
-  }, [signedIn, userId]);
-
-  const refreshStats = async () => {
+    try {
+      const u = await getCurrentUser();
+      setDisplayName(u?.display_name ?? null);
+    } catch {
+      // Identity read is non-critical — greeting falls back to "there".
+    }
+    try {
+      const p = await getResearchProfile();
+      setNeedsResearchProfile(p === null);
+    } catch {
+      // Non-critical — don't nag if we can't confirm.
+    }
     try {
       setStats(await getDashboardStats());
     } catch {
-      // Keep the last known stats rather than blanking the row.
+      // Not signed in (or offline) — the stat cards show dashes, never numbers.
     }
-  };
+    try {
+      const s = await getSessions();
+      setRecentSession(s && s.length ? s[0] : null);
+    } catch {
+      // Recent activity stays hidden.
+    }
+    try {
+      const j = await getJournalEntries();
+      setRecentEntry(j && j.length ? j[0] : null);
+    } catch {
+      // Not signed in — recent journal stays hidden.
+    }
+    try {
+      const ch = await getCheckins();
+      setRecentCheckin(ch && ch.length ? ch[0] : null);
+    } catch {
+      // Not signed in — recent check-in stays hidden.
+    }
+  }, [signedIn, userId]);
+
+  // Reload every time the tab regains focus: completing an exercise, saving a
+  // check-in or writing a diary entry must be reflected in the stats and the
+  // Recent list when the user comes back, not only on first mount.
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
 
   const now = new Date();
   const dateLabel = now.toLocaleDateString("en-GB", {
@@ -132,7 +141,7 @@ export default function HomeScreen() {
     { label: "Breathe", icon: "weather-windy" as const, fg: c.exBreath, bg: c.exBreathBg, route: "/exercise/category/breathing" },
     { label: "Ground", icon: "leaf" as const, fg: c.exGround, bg: c.exGroundBg, route: "/exercise/category/sensory" },
     { label: "Journal", icon: "notebook-edit-outline" as const, fg: c.exJournal, bg: c.exJournalBg, route: "/diary" },
-    { label: "Crisis", icon: "lifebuoy" as const, fg: c.exCrisis, bg: c.exCrisisBg, route: "/crisis/index" },
+    { label: "Crisis", icon: "lifebuoy" as const, fg: c.exCrisis, bg: c.exCrisisBg, route: "/crisis" },
   ];
 
   // Design-system §11 — weekly window-of-tolerance bars, now wired to real
@@ -174,7 +183,7 @@ export default function HomeScreen() {
             styles.greetingCard,
             { backgroundColor: mode === "light" ? c.warmGold : c.warmGoldTint },
           ]}
-          onPress={() => router.push("/profile/index")}
+          onPress={() => router.push("/profile")}
           accessibilityRole="button"
           accessibilityLabel={`${greeting}, ${displayName ?? "there"}. Open profile.`}
         >
@@ -223,7 +232,7 @@ export default function HomeScreen() {
             value shows a dash, never an illustrative number. */}
         <View style={styles.statsRow}>
           {(["Sessions", "Streak", "In window"] as const).map((label) => (
-            <View key={label} style={[styles.statCard, { backgroundColor: c.surface }]}>
+            <View key={label} style={[styles.statCard, sectionCard(mode, c)]}>
               {stats === null ? (
                 <M3Skeleton variant="text-multi" width={48} style={{ marginBottom: 0, alignSelf: "center" }} />
               ) : (
@@ -240,7 +249,9 @@ export default function HomeScreen() {
                     ? stats.sessions
                     : label === "Streak"
                     ? `${stats.streak}d`
-                    : `${inWindowPct}%`}
+                    : stats.daysWithState > 0
+                    ? `${inWindowPct}%`
+                    : "—"}
                 </Text>
               )}
               <Text style={[styles.statLabel, { color: c.textMuted }]}>{label}</Text>
@@ -251,7 +262,7 @@ export default function HomeScreen() {
         {/* M3-02 daily check-in — the Home vertical's first action (IA §3):
             ns_state + survival response + optional trigger/note → saveCheckin. */}
         <View onLayout={(e) => (checkinY.current = e.nativeEvent.layout.y)}>
-          <CheckInCard onSaved={() => void refreshStats()} />
+          <CheckInCard onSaved={() => void load()} />
         </View>
 
         {/* Today's plan */}
@@ -333,13 +344,15 @@ export default function HomeScreen() {
 
         {/* This week in your window — design-system §11, real check-in states */}
         <Text style={[styles.sectionTitle, { color: c.text }]}>This week in your window</Text>
-        <View style={[styles.weekCard, { backgroundColor: c.surface }]}>
+        <View style={[styles.weekCard, sectionCard(mode, c)]}>
           <View style={styles.weekHead}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.weekTitle, { color: c.text }]}>Where you spent the week</Text>
               <Text style={[styles.weekSub, { color: c.textMuted }]}>
                 {daysWithState > 0
                   ? `${daysInWindow} of ${daysWithState} days in window`
+                  : week.some((d) => d.hasCheckin)
+                  ? "Check-ins saved — mark where you are to fill the window"
                   : "No check-ins yet this week"}
               </Text>
             </View>
@@ -407,11 +420,29 @@ export default function HomeScreen() {
         </View>
 
         {/* Recent activity — real data when signed in, hidden otherwise */}
-        {recentSession || recentEntry ? (
+        {recentSession || recentEntry || recentCheckin ? (
           <>
             <Text style={[styles.sectionTitle, { color: c.text }]}>Recent</Text>
+            {recentCheckin ? (
+              <View style={[styles.activityRow, sectionCard(mode, c)]}>
+                <View style={[styles.activityIcon, { backgroundColor: c.nsWindowBg }]}>
+                  <MaterialCommunityIcons name="heart-pulse" size={18} color={c.nsWindow} />
+                </View>
+                <View style={styles.activityText}>
+                  <Text style={[styles.activityTitle, { color: c.text }]}>
+                    Check-in
+                    {nsOption(recentCheckin.ns_state)
+                      ? ` · ${nsOption(recentCheckin.ns_state)!.label}`
+                      : ""}
+                  </Text>
+                  <Text style={[styles.activitySubtitle, { color: c.textMuted }]}>
+                    Check-in · {relative(recentCheckin.created_at)}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
             {recentSession && recentSession.exercises ? (
-              <View style={[styles.activityRow, { backgroundColor: c.surface }]}>
+              <View style={[styles.activityRow, sectionCard(mode, c)]}>
                 <View style={[styles.activityIcon, { backgroundColor: c.accentTint }]}>
                   <MaterialCommunityIcons name="check-circle" size={18} color={c.accent} />
                 </View>
@@ -426,7 +457,7 @@ export default function HomeScreen() {
               </View>
             ) : null}
             {recentEntry ? (
-              <View style={[styles.activityRow, { backgroundColor: c.surface }]}>
+              <View style={[styles.activityRow, sectionCard(mode, c)]}>
                 <View style={[styles.activityIcon, { backgroundColor: c.exJournalBg }]}>
                   <MaterialCommunityIcons name="notebook-edit-outline" size={18} color={c.exJournal} />
                 </View>
@@ -515,7 +546,7 @@ function SignedOutHome({ onSignIn, prompt }: { onSignIn: () => void; prompt: Rea
     { label: "Breathe", detail: "Public", icon: "weather-windy" as const, fg: c.exBreath, bg: c.exBreathBg, route: "/exercise/category/breathing" },
     { label: "Ground", detail: "Public", icon: "leaf" as const, fg: c.exGround, bg: c.exGroundBg, route: "/exercise/category/sensory" },
     { label: "Toolkit", detail: "10 pages free", icon: "book-open-variant" as const, fg: c.exBreath, bg: c.exBreathBg, route: "/(tabs)/toolkit" },
-    { label: "Crisis", detail: "Always open", icon: "lifebuoy" as const, fg: c.exCrisis, bg: c.exCrisisBg, route: "/crisis/index" },
+    { label: "Crisis", detail: "Always open", icon: "lifebuoy" as const, fg: c.exCrisis, bg: c.exCrisisBg, route: "/crisis" },
   ];
 
   return (
@@ -533,7 +564,7 @@ function SignedOutHome({ onSignIn, prompt }: { onSignIn: () => void; prompt: Rea
             </View>
           </View>
           <Text style={[styles.signedOutBody, { color: c.text }]}>Explore grounding, breathing and nervous-system exercises at your own pace.</Text>
-          <M3Button label="Sign in with Google" icon="google" color={c.secondaryActive} onPress={onSignIn} />
+          <M3Button label="Sign in" icon="google" color={c.secondaryActive} onPress={onSignIn} />
           <View style={[styles.signedOutNoteRow, { borderTopColor: c.secondarySubtle }]}>
             <MaterialCommunityIcons name="lock-outline" size={16} color={c.secondary} />
             <Text style={[styles.signedOutNote, { color: c.secondary }]}>You can browse without an account. Sign in when you want to save sessions, journal entries or progress.</Text>
@@ -601,6 +632,23 @@ interface EntryRow {
   created_at: string;
   prompts: { prompt_text: string } | null;
 }
+
+interface CheckinRow {
+  created_at: string;
+  ns_state: string | null;
+}
+
+/**
+ * Section-card surface. In light mode `surface` (#FAF8F3) and `bg` (#F4F1EB) are
+ * nearly identical, so the dashboard's sections melted into the page — light mode
+ * lifts them onto `surface2` (#FFFFFF) plus the design-system hairline border
+ * (`.ccard` idiom). Dark mode keeps `surface` (already distinct from `bg`).
+ */
+const sectionCard = (mode: string, c: typeof colors.light) => ({
+  backgroundColor: mode === "light" ? c.surface2 : c.surface,
+  borderWidth: 1,
+  borderColor: c.divider,
+});
 
 const styles = StyleSheet.create({
   root: { flex: 1 },

@@ -116,12 +116,14 @@ export default function SignInPrompt({
           onPress={(e) => e.stopPropagation()}
           accessibilityViewIsModal
         >
-          <View style={[styles.medallion, { backgroundColor: c.secondaryTint }]}>
-            <MaterialCommunityIcons name="google" size={30} color={c.secondary} />
+          {/* Google sign-in badge — white circle + brand-blue G (Google's own
+              button branding), not a theme-tinted icon. */}
+          <View style={styles.medallion}>
+            <MaterialCommunityIcons name="google" size={30} color="#4285F4" />
           </View>
 
           <Text style={[styles.title, { color: c.text }]}>
-            {title ?? "Sign in with Google"}
+            {title ?? "Sign in"}
           </Text>
           <Text style={[styles.message, { color: c.textMuted }]}>
             {message ?? "Sign in to save your progress — your exercises, journal and check-ins stay private to your account."}
@@ -137,9 +139,8 @@ export default function SignInPrompt({
               style={{ flex: 1 }}
             />
             <M3Button
-              label={busy ? "Signing in…" : (confirmLabel ?? "Sign in with Google")}
+              label={busy ? "Signing in…" : (confirmLabel ?? "Sign in")}
               icon={busy ? undefined : "google"}
-              iconRight
               color={c.secondaryActive}
               onPress={onConfirm}
               disabled={busy}
@@ -182,6 +183,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 14,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#DADCE0",
   },
   title: { fontSize: 18, fontWeight: "800", textAlign: "center", letterSpacing: -0.2 },
   message: { marginTop: 8, fontSize: 14, lineHeight: 21, textAlign: "center" },

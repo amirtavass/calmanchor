@@ -98,6 +98,7 @@ export default function ToolkitScreen() {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [view, setView] = useState<"contents" | "read">("contents");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -123,17 +124,27 @@ export default function ToolkitScreen() {
   }, []);
 
   useEffect(() => {
+    let active = true;
+    setLoading(true);
     (async () => {
       try {
         const data = await getChapters();
-        setChapters(data ?? []);
+        if (active) setChapters(data ?? []);
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        if (active) setError(e instanceof Error ? e.message : String(e));
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     })();
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [reloadKey]);
+
+  const retryChapters = () => {
+    setError(null);
+    setReloadKey((n) => n + 1);
+  };
 
   // Group chapters by content_group, preserving order_index within.
   const groups = useMemo(() => {
@@ -301,17 +312,18 @@ export default function ToolkitScreen() {
                     <Text style={[styles.errorText, { color: c.error }]}>
                       Couldn't load the chapter list. {error}
                     </Text>
-                    <M3Button label="Retry" color={c.secondary} onPress={() => setError(null)} style={styles.retry} />
+                    <M3Button label="Retry" color={c.secondary} onPress={retryChapters} style={styles.retry} />
                   </View>
                 ) : groups.length === 0 ? (
                   <View style={styles.emptyState}>
                     <View style={[styles.emptyMedallion, { backgroundColor: c.exBreathBg }]}>
                       <MaterialCommunityIcons name="book-open-page-variant-outline" size={32} color={c.exBreath} />
                     </View>
-                    <Text style={[styles.emptyTitle, { color: c.text }]}>No chapters yet</Text>
+                    <Text style={[styles.emptyTitle, { color: c.text }]}>Workbook contents unavailable</Text>
                     <Text style={[styles.emptyDesc, { color: c.textMuted }]}>
-                      Run `npm run seed` to load the workbook outline.
+                      We couldn't load the chapter list. Check your connection and try again.
                     </Text>
+                    <M3Button label="Try again" color={c.secondary} onPress={retryChapters} style={styles.retry} />
                   </View>
                 ) : (
                   groups.map(([group, list]) => {
@@ -482,9 +494,8 @@ const FreePreview = forwardRef<
           everything you read stays private to your account.
         </Text>
         <M3Button
-          label="Sign in with Google"
+          label="Sign in"
           icon="google"
-          iconRight
           color={c.secondaryActive}
           onPress={() => {
             void signInWithGoogle();

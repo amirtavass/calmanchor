@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { Text, TextInput } from "react-native-paper";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import ScreenHeader from "../../components/ScreenHeader";
 import M3Button from "../../components/M3Button";
 import M3Skeleton from "../../components/M3Skeleton";
@@ -77,17 +77,21 @@ export default function PortfolioScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    if (!signedIn) {
-      setLoading(false);
-      setFavourites([]);
-      setNotes([]);
-      setStrategies([]);
-      return;
-    }
-    setLoading(true);
-    void load();
-  }, [signedIn, load]);
+  // Reload on every focus: starring an exercise happens on another screen, so
+  // a mount-only read would leave this tab showing a stale/empty list.
+  useFocusEffect(
+    useCallback(() => {
+      if (!signedIn) {
+        setLoading(false);
+        setFavourites([]);
+        setNotes([]);
+        setStrategies([]);
+        return;
+      }
+      setLoading(true);
+      void load();
+    }, [signedIn, load]),
+  );
 
   const run = (fn: () => Promise<void>) => {
     if (busy) return;
@@ -131,19 +135,44 @@ export default function PortfolioScreen() {
     });
   };
 
-  const emptyState = (icon: MciGlyph, title: string, body: string) => (
-    <View style={[styles.empty, { backgroundColor: c.surface }]}>
-      <View style={[styles.emptyIcon, { backgroundColor: c.surfaceOffset }]}>
-        <MaterialCommunityIcons name={icon} size={20} color={c.textMuted} />
+  // Per-section identity (craft §6 — one hue per meaning). The gold pair flips
+  // per mode so the star stays readable; notes and strategies use their own
+  // --ex-* pairs in both modes.
+  const ACCENTS = {
+    favourites: {
+      fg: mode === "light" ? c.warmGoldSubtle : c.warmGold,
+      medallionBg: mode === "light" ? c.warmGold : c.warmGoldTint,
+      medallionFg: mode === "light" ? c.warmGoldTint : c.warmGold,
+    },
+    notes: { fg: c.exGround, medallionBg: c.exGroundBg, medallionFg: c.exGround },
+    strategies: { fg: c.exSelfkind, medallionBg: c.exSelfkindBg, medallionFg: c.exSelfkind },
+  } as const;
+
+  /** Section surface: white + hairline edge in light mode (see dashboard). */
+  const rowSurface = {
+    backgroundColor: mode === "light" ? c.surface2 : c.surface,
+    borderWidth: 1,
+    borderColor: c.divider,
+  };
+
+  const emptyState = (
+    icon: MciGlyph,
+    title: string,
+    body: string,
+    accent: (typeof ACCENTS)[keyof typeof ACCENTS],
+  ) => (
+    <View style={[styles.empty, rowSurface]}>
+      <View style={[styles.emptyIcon, { backgroundColor: accent.medallionBg }]}>
+        <MaterialCommunityIcons name={icon} size={20} color={accent.medallionFg} />
       </View>
       <Text style={[styles.emptyTitle, { color: c.text }]}>{title}</Text>
       <Text style={[styles.emptyBody, { color: c.textMuted }]}>{body}</Text>
     </View>
   );
 
-  const sectionHeader = (title: string, icon: MciGlyph, count: number) => (
+  const sectionHeader = (title: string, icon: MciGlyph, count: number, fg: string) => (
     <View style={styles.sectionHead}>
-      <MaterialCommunityIcons name={icon} size={18} color={c.textMuted} />
+      <MaterialCommunityIcons name={icon} size={18} color={fg} />
       <Text style={[styles.sectionTitle, { color: c.text }]}>{title}</Text>
       {count > 0 ? (
         <View style={[styles.countPill, { backgroundColor: c.surfaceOffset }]}>
@@ -174,12 +203,13 @@ export default function PortfolioScreen() {
             {error ? <Text style={[styles.error, { color: c.error }]}>{error}</Text> : null}
 
             {/* ---- Favourites ------------------------------------------------ */}
-            {sectionHeader("Favourite exercises", "star", favourites.length)}
+            {sectionHeader("Favourite exercises", "star", favourites.length, ACCENTS.favourites.fg)}
             {favourites.length === 0
               ? emptyState(
                   "star-outline",
                   "Nothing saved yet",
                   "Tap the star on any exercise to keep it here for quick access.",
+                  ACCENTS.favourites,
                 )
               : favourites.map((f) => {
                   const key = (f.exercises?.category ?? "mindful") as ExerciseCategory;
@@ -189,7 +219,7 @@ export default function PortfolioScreen() {
                     <Pressable
                       key={f.id}
                       onPress={() => router.push(`/exercise/${f.exercise_id}`)}
-                      style={[styles.row, { backgroundColor: c.surface }]}
+                      style={[styles.row, rowSurface]}
                       accessibilityRole="button"
                       accessibilityLabel={`Open ${f.exercises?.title ?? "exercise"}`}
                     >
@@ -211,9 +241,9 @@ export default function PortfolioScreen() {
                 })}
 
             {/* ---- Safe-space notes ------------------------------------------ */}
-            {sectionHeader("Safe-space notes", "home-heart", notes.length)}
+            {sectionHeader("Safe-space notes", "home-heart", notes.length, ACCENTS.notes.fg)}
             {noteOpen ? (
-              <View style={[styles.composer, { backgroundColor: c.surface }]}>
+              <View style={[styles.composer, rowSurface]}>
                 <TextInput
                   mode="outlined"
                   label="Describe a place that feels safe (optional detail)"
@@ -268,9 +298,10 @@ export default function PortfolioScreen() {
                   "home-heart",
                   "No notes yet",
                   "Jot down what a safe place looks, sounds or feels like — from the workbook's Making Safety Real section.",
+                  ACCENTS.notes,
                 )
               : notes.map((n) => (
-                  <View key={n.id} style={[styles.row, { backgroundColor: c.surface }]}>
+                  <View key={n.id} style={[styles.row, rowSurface]}>
                     <View style={[styles.rowIcon, { backgroundColor: c.exGroundBg }]}>
                       <MaterialCommunityIcons name="home-heart" size={18} color={c.exGround} />
                     </View>
@@ -325,9 +356,9 @@ export default function PortfolioScreen() {
                 ))}
 
             {/* ---- Custom strategies ----------------------------------------- */}
-            {sectionHeader("Your strategies", "lightbulb-on-outline", strategies.length)}
+            {sectionHeader("Your strategies", "lightbulb-on-outline", strategies.length, ACCENTS.strategies.fg)}
             {strategyOpen ? (
-              <View style={[styles.composer, { backgroundColor: c.surface }]}>
+              <View style={[styles.composer, rowSurface]}>
                 <TextInput
                   mode="outlined"
                   label="What helps you?"
@@ -393,9 +424,10 @@ export default function PortfolioScreen() {
                   "lightbulb-on-outline",
                   "No strategies yet",
                   "Anything that helps you — a walk, a phrase, a person. Written in your own words, for your own use.",
+                  ACCENTS.strategies,
                 )
               : strategies.map((s) => (
-                  <View key={s.id} style={[styles.row, { backgroundColor: c.surface }]}>
+                  <View key={s.id} style={[styles.row, rowSurface]}>
                     <View style={[styles.rowIcon, { backgroundColor: c.exSelfkindBg }]}>
                       <MaterialCommunityIcons name="lightbulb-on-outline" size={18} color={c.exSelfkind} />
                     </View>

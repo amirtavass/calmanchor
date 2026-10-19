@@ -48,7 +48,12 @@ export async function pendingCount(): Promise<number> {
   return Number(rows[0]?.n ?? 0);
 }
 
-async function applyRemote(
+/**
+ * Apply one write straight to Supabase. Exported so `lib/db.ts` can use it when
+ * the local database is unavailable (Expo Go / a dev client without ExpoSQLite):
+ * without this, `enqueue()` is a no-op and the write is lost entirely.
+ */
+export async function applyRemoteOp(
   op: OutboxOp,
   tableName: string,
   rowId: string,
@@ -109,7 +114,7 @@ export async function flushOutbox(): Promise<{ pushed: number; failed: number; p
   let failed = 0;
   for (const row of rows) {
     try {
-      await applyRemote(
+      await applyRemoteOp(
         row.op as OutboxOp,
         row.tableName,
         row.rowId,

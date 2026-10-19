@@ -22,7 +22,7 @@ export default function CrisisFab() {
         icon="hand-heart"
         style={[styles.fab, { backgroundColor: c.error }]}
         color={c.textInverse}
-        onPress={() => router.push("/crisis/index")}
+        onPress={() => router.push("/crisis")}
         testID="crisis-fab"
         accessibilityLabel="Crisis support"
       />

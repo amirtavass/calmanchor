@@ -3,14 +3,17 @@ import { ensureSignedIn, getCurrentUserId } from "./auth";
 import { nsBucket, type NsStateKey } from "../types/checkin";
 import { newId } from "./id";
 import {
+  applyRemoteOp,
   cacheClearAll,
   cacheGet,
   cacheList,
   cacheRemove,
+  cacheUpsert,
   cacheUpsertOne,
   dropOutbox,
   enqueue,
   flushOutbox,
+  getLocalDb,
   pendingCount,
   readThrough,
   type OutboxOp,
@@ -70,6 +73,15 @@ async function writeThrough(
 ): Promise<void> {
   if (row) await cacheUpsertOne(table, row, ownerId);
   else await cacheRemove(table, rowId);
+
+  // No local database (Expo Go / dev client without the ExpoSQLite module):
+  // the outbox cannot persist anything, so write straight to Supabase. Losing
+  // the write silently would leave the user's progress at zero.
+  if (!getLocalDb()) {
+    await applyRemoteOp(op, table, rowId, row ?? null);
+    return;
+  }
+
   await enqueue(op, table, rowId, row);
   void flushOutbox();
 }
@@ -143,6 +155,10 @@ export async function setJournalEntryTags(entryId: string, tagIds: string[]) {
     updated_at: new Date().toISOString(),
   };
   await cacheUpsertOne("journal_entries", row, userId);
+  if (!getLocalDb()) {
+    await applyRemoteOp("replace_entry_tags", "journal_entry_tags", entryId, { tag_ids: tagIds });
+    return;
+  }
   await enqueue("replace_entry_tags", "journal_entry_tags", entryId, { tag_ids: tagIds });
   void flushOutbox();
 }
@@ -454,6 +470,8 @@ export interface DashboardWeekDay {
   day: string;
   /** Window-of-tolerance bucket of the last check-in that day, if any. */
   state: NsStateKey | null;
+  /** True when any check-in was saved that day, with or without a state. */
+  hasCheckin: boolean;
   isToday: boolean;
   /** Bar height in dp — presence is the message, height carries no metric. */
   height: number;
@@ -461,7 +479,7 @@ export interface DashboardWeekDay {
 
 export interface DashboardStats {
   sessions: number;
-  /** Consecutive days (ending today, or yesterday if today has none) with a session. */
+  /** Consecutive days with any activity — exercise, check-in or journal entry. */
   streak: number;
   week: DashboardWeekDay[];
   daysInWindow: number;
@@ -487,22 +505,33 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const userId = await ensureSignedIn();
   if (!userId) throw new Error("Sign-in required to view your stats");
 
-  const [sessionRows, checkinRows] = await Promise.all([
+  const [sessionRows, checkinRows, journalRows] = await Promise.all([
     readThrough("exercise_sessions", userId, remoteSessions),
     readThrough("checkins", userId, remoteCheckins),
+    readThrough("journal_entries", userId, remoteJournalEntries),
   ]);
 
   const today = new Date();
   const todayKey = localDayKey(today);
 
-  const sessionDays = new Set(
-    sessionRows.map((r) =>
-      localDayKey(new Date((r.started_at ?? r.created_at ?? new Date().toISOString()) as string)),
-    ),
-  );
+  const dayKeyOf = (r: Record<string, unknown>) =>
+    localDayKey(
+      new Date(
+        (r.started_at ?? r.created_at ?? new Date().toISOString()) as string,
+      ),
+    );
+
+  // A streak day is any day the user did something: an exercise, a check-in or
+  // a journal entry. The app should never show "0d" to someone who just
+  // finished an exercise because only one of the three was counted.
+  const activityDays = new Set<string>([
+    ...sessionRows.map(dayKeyOf),
+    ...checkinRows.map(dayKeyOf),
+    ...journalRows.map(dayKeyOf),
+  ]);
   let streak = 0;
-  let cursor = sessionDays.has(todayKey) ? today : addDays(today, -1);
-  while (sessionDays.has(localDayKey(cursor))) {
+  let cursor = activityDays.has(todayKey) ? today : addDays(today, -1);
+  while (activityDays.has(localDayKey(cursor))) {
     streak += 1;
     cursor = addDays(cursor, -1);
   }
@@ -531,6 +560,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     week.push({
       day: isToday ? "Today" : d.toLocaleDateString("en-GB", { weekday: "short" }),
       state,
+      hasCheckin: hadCheckinOn.has(key),
       isToday,
       height: state || (isToday && hadCheckinOn.has(key)) ? 32 : 12,
     });
@@ -593,8 +623,18 @@ export async function getFavourites(): Promise<FavouriteRow[]> {
 export async function getFavouriteExerciseIds(): Promise<Set<string>> {
   const userId = await getCurrentUserId();
   if (!userId) return new Set();
-  const rows = await cacheList("favourites", userId);
-  return new Set(rows.map((r) => String(r.payload.exercise_id ?? "")));
+  const local = await cacheList("favourites", userId);
+  if (local.length > 0) {
+    return new Set(local.map((r) => String(r.payload.exercise_id ?? "")));
+  }
+  // No local cache (Expo Go / first run): read the star state from Supabase.
+  try {
+    const rows = await remoteFavourites();
+    await cacheUpsert("favourites", rows as unknown as Record<string, unknown>[], userId);
+    return new Set(rows.map((r) => r.exercise_id));
+  } catch {
+    return new Set();
+  }
 }
 
 export async function addFavourite(exerciseId: string) {
@@ -617,6 +657,18 @@ export async function removeFavourite(exerciseId: string) {
   const existing = (await cacheList("favourites", userId)).find(
     (r) => r.payload.exercise_id === exerciseId,
   );
+  if (!existing && !getLocalDb()) {
+    // No local index (Expo Go): resolve the row id from Supabase itself.
+    const { data, error } = await supabase
+      .from("favourites")
+      .select("id")
+      .eq("exercise_id", exerciseId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (error) throw error;
+    if (data?.id) await writeThrough("delete", "favourites", null, userId, data.id);
+    return;
+  }
   await writeThrough("delete", "favourites", null, userId, existing?.id ?? exerciseId);
 }
 

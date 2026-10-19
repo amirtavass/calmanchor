@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { ComponentProps } from "react";
-import { Animated, StyleSheet } from "react-native";
-import { TouchableRipple } from "react-native-paper";
+import { Animated, Pressable, StyleSheet } from "react-native";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useAppTheme } from "../theme/ThemeContext";
 import { colors } from "../theme/tokens";
@@ -53,10 +52,9 @@ export default function M3Chip({
 
   if (tint) {
     return (
-      <TouchableRipple
+      <Pressable
         onPress={onPress}
-        style={styles.ripple}
-        borderless
+        style={({ pressed }) => [styles.ripple, pressed && { opacity: 0.85 }]}
         accessibilityRole="button"
         accessibilityState={{ selected }}
         accessibilityLabel={selected ? `${label}, selected` : label}
@@ -71,7 +69,7 @@ export default function M3Chip({
             {label}
           </Animated.Text>
         </Animated.View>
-      </TouchableRipple>
+      </Pressable>
     );
   }
 
@@ -86,9 +84,9 @@ export default function M3Chip({
   const iconOpacity = prog.interpolate({ inputRange: [0, 0.6, 1], outputRange: [0, 0, 1] });
 
   return (
-    <TouchableRipple
+    <Pressable
       onPress={onPress}
-      style={styles.ripple}
+      style={({ pressed }) => [styles.ripple, pressed && { opacity: 0.85 }]}
       accessibilityRole="button"
       accessibilityState={{ selected }}
       accessibilityLabel={selected ? `${label}, selected` : label}
@@ -104,7 +102,7 @@ export default function M3Chip({
         </Animated.View>
         <Animated.Text style={[styles.label, { color: labelColor }]}>{label}</Animated.Text>
       </Animated.View>
-    </TouchableRipple>
+    </Pressable>
   );
 }
 

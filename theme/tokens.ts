@@ -1,6 +1,9 @@
 export const colors = {
   light: {
-    bg: "#F4F1EB",
+    // Page background — one step deeper than the design system's #F4F1EB so the
+    // white/surface cards and sections read clearly against it (user report:
+    // the old bg was too close to the card surfaces).
+    bg: "#E8E1D3",
     surface: "#FAF8F3",
     surface2: "#FFFFFF",
     surfaceOffset: "#ECE7DD",

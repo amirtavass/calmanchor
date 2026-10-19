@@ -116,7 +116,7 @@ export default function CheckInCard({
   if (saved) {
     const opt = nsOption(saved.ns);
     return (
-      <View style={[styles.card, { backgroundColor: c.surface }]}>
+      <View style={[styles.card, { backgroundColor: mode === "light" ? c.surface2 : c.surface, borderColor: c.divider }]}>
         <View style={styles.savedRow}>
           <View style={[styles.savedIcon, { backgroundColor: opt ? c[opt.bg] : c.surfaceOffset }]}>
             <MaterialCommunityIcons
@@ -139,7 +139,15 @@ export default function CheckInCard({
   }
 
   return (
-    <View style={[styles.card, { backgroundColor: c.surface }]}>
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: mode === "light" ? c.surface2 : c.surface,
+          borderColor: c.divider,
+        },
+      ]}
+    >
       <Text style={[styles.title, { color: c.text }]}>How are you right now?</Text>
       <Text style={[styles.sub, { color: c.textMuted }]}>
         A quick note on your state. Optional, private, and only yours.
@@ -206,7 +214,7 @@ export default function CheckInCard({
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 16, padding: 16, marginBottom: 16 },
+  card: { borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1 },
   title: { fontSize: 16, lineHeight: 22, fontWeight: "800", letterSpacing: -0.2 },
   sub: { marginTop: 2, fontSize: 13, lineHeight: 19, marginBottom: 12 },
   label: {

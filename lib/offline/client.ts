@@ -1,5 +1,5 @@
-import { drizzle, type ExpoSQLiteDatabase } from "drizzle-orm/expo-sqlite";
-import { openDatabaseSync } from "expo-sqlite";
+import { requireOptionalNativeModule } from "expo";
+import type { ExpoSQLiteDatabase } from "drizzle-orm/expo-sqlite";
 import * as schema from "./schema";
 
 /**
@@ -22,6 +22,17 @@ export function getLocalDb(): LocalDb | null {
   if (attempted) return db;
   attempted = true;
   try {
+    // Check for the native module *before* requiring `expo-sqlite`: its module
+    // factory calls `requireNativeModule('ExpoSQLite')` at import time, and
+    // Metro's dev loader reports any factory error as a fatal error before a
+    // surrounding try/catch can suppress it. A missing module simply means the
+    // app runs online-only (Expo Go / a dev client built before it was added).
+    if (!requireOptionalNativeModule("ExpoSQLite")) {
+      db = null;
+      return null;
+    }
+    const { drizzle } = require("drizzle-orm/expo-sqlite") as typeof import("drizzle-orm/expo-sqlite");
+    const { openDatabaseSync } = require("expo-sqlite") as typeof import("expo-sqlite");
     const sqlite = openDatabaseSync(DB_NAME);
     sqlite.execSync(`
       create table if not exists cache (
